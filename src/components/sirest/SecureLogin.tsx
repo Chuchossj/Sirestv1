@@ -439,35 +439,6 @@ export function SecureLogin({ onLogin, onPasswordReset }: SecureLoginProps) {
                 <Shield className="h-3 w-3 text-[#5B2C90]" />
                 <span>Autenticación segura con encriptación SSL</span>
               </div>
-              
-              <div className="bg-gradient-to-br from-[#0B2240]/5 to-[#5B2C90]/5 border border-[#5B2C90]/20 rounded-lg p-4 text-xs text-[#0B2240]">
-                <p className="font-medium mb-2 text-[#5B2C90]">💡 Credenciales de Demostración:</p>
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium text-[#0B2240]">👑 Admin:</span>
-                    <span className="text-gray-700">admin@globatech.com / admin123</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium text-[#5B2C90]">🍽️ Mesero:</span>
-                    <span className="text-gray-700">mesero@globatech.com / mesero123</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium text-[#F28C1B]">💰 Cajero:</span>
-                    <span className="text-gray-700">cajero@globatech.com / cajero123</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium text-[#FFD23F]">👨‍🍳 Cocinero:</span>
-                    <span className="text-gray-700">cocinero@globatech.com / cocinero123</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium text-green-600">👤 Cliente:</span>
-                    <span className="text-gray-700">cliente@globatech.com / cliente123</span>
-                  </div>
-                </div>
-                <p className="text-[10px] text-gray-600 mt-3 pt-2 border-t border-gray-200">
-                  Los nuevos registros crean cuentas de Cliente. Para crear usuarios de staff, use la cuenta de administrador.
-                </p>
-              </div>
             </div>
           </CardContent>
         </Card>
