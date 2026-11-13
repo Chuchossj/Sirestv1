@@ -61,7 +61,8 @@ const statusConfig = {
     label: "Servido",
     color: "bg-gray-500 text-white border-gray-500",
     description: "Su pedido ha sido servido. ¡Disfrute!"
-  }
+  },
+  paid: { icon: CheckCircle, label: "Pagado", color: "bg-green-600 text-white", description: "Su pedido fue pagado correctamente" }
 };
 
 export function ClientPortal({ userData, onLogout, accessToken }: ClientPortalProps) {
@@ -152,7 +153,7 @@ export function ClientPortal({ userData, onLogout, accessToken }: ClientPortalPr
     }
 
     console.log("Submitting order with accessToken:", accessToken ? "Present" : "Missing");
-    console.log("User data:", userData);
+
 
     setIsSubmitting(true);
 
@@ -179,7 +180,7 @@ export function ClientPortal({ userData, onLogout, accessToken }: ClientPortalPr
         orderType: "cliente"
       };
 
-      console.log("Order data:", orderData);
+
 
       const response = await apiRequest("/orders", {
         method: "POST",
@@ -187,7 +188,7 @@ export function ClientPortal({ userData, onLogout, accessToken }: ClientPortalPr
         accessToken
       });
 
-      console.log("Order response:", response);
+
 
       if (response.success) {
         toast.success("✅ ¡Pedido enviado exitosamente!");
