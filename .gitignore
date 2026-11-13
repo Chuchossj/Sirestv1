@@ -1,0 +1,21 @@
+# Dependencias y compilación
+node_modules/
+dist/
+
+# Resultados de pruebas automatizadas
+test-results/
+playwright-report/
+playwright/.cache/
+
+# Variables de entorno (no versionar secretos)
+.env
+.env.*
+!.env.example
+
+# Configuración generada para el entorno local de QA
+/supabase/
+/.vscode/
+
+# Archivos temporales
+*.log
+.DS_Store
