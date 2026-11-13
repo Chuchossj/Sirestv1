@@ -1,0 +1,39 @@
+name: SIREST recovery checks
+on:
+  pull_request:
+  push:
+    branches: ["recovery/sirest-supabase"]
+permissions:
+  contents: read
+jobs:
+  build-and-api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install --no-audit --no-fund
+      - run: npm run build
+      - name: Verify API and authentication boundary
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          const config = readFileSync('src/utils/supabase/info.tsx', 'utf8');
+          const project = config.match(/projectId = .*?\|\| "([^"]+)"/)[1];
+          const key = config.match(/publicAnonKey = .*?\|\| "([^"]+)"/)[1];
+          const base = 'https://' + project + '.supabase.co/functions/v1/make-server-71783a73';
+          const headers = { Authorization: 'Bearer ' + key, apikey: key, 'Content-Type': 'application/json' };
+          const health = await fetch(base + '/health', { headers });
+          if (!health.ok) throw new Error('Health endpoint returned ' + health.status + ': ' + await health.text());
+          const data = await health.json();
+          if (!data.success || data.database !== 'connected') throw new Error('Database health failed');
+          const denied = await fetch(base + '/users', { headers });
+          if (![401,403].includes(denied.status)) throw new Error('Anonymous users access: ' + denied.status);
+          const invalid = await fetch(base + '/auth/login', { method: 'POST', headers, body: JSON.stringify({ email: 'sirest-ci-invalid@example.com', password: 'invalid-test-password' }) });
+          if (invalid.status !== 401) throw new Error('Invalid login: ' + invalid.status);
+          const staff = await fetch(base + '/auth/signup', { method: 'POST', headers, body: JSON.stringify({ email: 'sirest-ci-invalid@example.com', password: 'invalid-test-password', name: 'CI', role: 'administrador' }) });
+          if (staff.status !== 403) throw new Error('Anonymous admin signup: ' + staff.status);
+          console.log('API health, anonymous access, invalid login and admin registration boundary passed');
+          NODE
