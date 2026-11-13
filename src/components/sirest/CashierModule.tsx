@@ -82,8 +82,8 @@ export function CashierModule({ activeTab, accessToken }: CashierModuleProps) {
 
   // Pagos del día
   const todayPayments = payments.filter((p: any) => {
-    const paymentDate = new Date(p.createdAt).toDateString();
-    return paymentDate === new Date().toDateString();
+    const day = (date: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota", year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
+    return p.status === "completed" && day(new Date(p.createdAt)) === day(new Date());
   });
 
   const todaysSales = todayPayments.reduce((sum: number, p: any) => sum + (p.total || 0), 0);
