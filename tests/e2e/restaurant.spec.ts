@@ -61,7 +61,12 @@ test('administrator creates inventory item and verifies persistence', async ({ p
 test('staff roles navigate and complete a restaurant order', async ({ page }) => {
   test.setTimeout(150000);
   const tableId = 'table:e2e-' + tag;
-  const { error } = await db.from(table).insert({ key: tableId, value: { id: tableId, number: '88', capacity: 4, status: 'disponible' } });
+  const menuName = 'QA Menu ' + tag;
+  const menuId = 'product:e2e-' + tag;
+  const { error } = await db.from(table).insert([
+    { key: tableId, value: { id: tableId, number: '88', capacity: 4, status: 'disponible' } },
+    { key: menuId, value: { id: menuId, name: menuName, category: 'Platos Fuertes', price: 25000, stock: 30, minStock: 5, image: '' } }
+  ]);
   if (error) throw error;
   const roles = ['mesero', 'cocinero', 'cajero', 'cliente'];
   const roleEmail = role => role + '-e2e-' + tag + '@example.com';
@@ -87,9 +92,8 @@ test('staff roles navigate and complete a restaurant order', async ({ page }) =>
   await page.getByRole('tab', { name: 'Mis Mesas' }).click();
   await page.getByText('#88', { exact: true }).click();
   await page.getByRole('tab', { name: 'Nuevo Pedido' }).click();
-  // The API integration test creates a product in the same disposable stack.
-  await page.getByPlaceholder('Buscar platos en el menú...').fill('QA Burger');
-  const card = page.locator('[data-slot="card"]').filter({ has: page.getByRole('heading', { name: 'QA Burger', exact: true }) });
+  await page.getByPlaceholder('Buscar platos en el menú...').fill(menuName);
+  const card = page.locator('[data-slot="card"]').filter({ has: page.getByRole('heading', { name: menuName, exact: true }) });
   await card.getByRole('button', { name: 'Agregar', exact: true }).click();
   await page.getByRole('button', { name: 'Enviar a Cocina' }).click();
   await expect(page.getByText(/Pedido enviado a cocina/)).toBeVisible();
