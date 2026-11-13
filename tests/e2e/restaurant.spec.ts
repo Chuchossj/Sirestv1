@@ -57,3 +57,69 @@ test('administrator creates inventory item and verifies persistence', async ({ p
   await page.getByRole('button', { name: 'Cerrar Sesión', exact: true }).click();
   await expect(page.locator('#login-email')).toBeVisible();
 });
+
+test('staff roles navigate and complete a restaurant order', async ({ page }) => {
+  test.setTimeout(150000);
+  const tableId = 'table:e2e-' + tag;
+  const { error } = await db.from(table).insert({ key: tableId, value: { id: tableId, number: '88', capacity: 4, status: 'disponible' } });
+  if (error) throw error;
+  const roles = ['mesero', 'cocinero', 'cajero', 'cliente'];
+  const roleEmail = role => role + '-e2e-' + tag + '@example.com';
+  const logout = async () => {
+    await page.getByRole('button', { name: 'Cerrar Sesión', exact: true }).click();
+    await expect(page.locator('#login-email')).toBeVisible();
+  };
+  await signIn(page, email, 'Panel de Administración');
+  await page.getByRole('button', { name: 'Gestión de Usuarios', exact: true }).click();
+  for (const role of roles) {
+    await page.getByRole('button', { name: 'Nuevo Usuario' }).click();
+    const d = page.getByRole('dialog');
+    await d.locator('#name').fill('QA ' + role);
+    await d.locator('#email').fill(roleEmail(role));
+    await d.locator('#password').fill(password);
+    await d.locator('#role').selectOption(role);
+    await d.getByRole('button', { name: 'Crear Usuario', exact: true }).click();
+    await expect(page.getByRole('row').filter({ hasText: roleEmail(role) })).toBeVisible();
+  }
+  await logout();
+  await signIn(page, roleEmail('mesero'), 'Panel de Mesero');
+  await expect(page.getByRole('button', { name: 'Gestión de Usuarios', exact: true })).toHaveCount(0);
+  await page.getByRole('tab', { name: 'Mis Mesas' }).click();
+  await page.getByText('#88', { exact: true }).click();
+  await page.getByRole('tab', { name: 'Nuevo Pedido' }).click();
+  // The API integration test creates a product in the same disposable stack.
+  await page.getByPlaceholder('Buscar platos en el menú...').fill('QA Burger');
+  const card = page.locator('[data-slot="card"]').filter({ has: page.getByRole('heading', { name: 'QA Burger', exact: true }) });
+  await card.getByRole('button', { name: 'Agregar', exact: true }).click();
+  await page.getByRole('button', { name: 'Enviar a Cocina' }).click();
+  await expect(page.getByText(/Pedido enviado a cocina/)).toBeVisible();
+  await logout();
+  await signIn(page, roleEmail('cocinero'), 'Panel de Cocina');
+  await page.getByRole('button', { name: 'Iniciar Preparación' }).click();
+  await page.getByRole('button', { name: 'Marcar Listo' }).click();
+  await page.getByRole('tab', { name: 'Listas', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Mesa #88', exact: true })).toBeVisible();
+  await logout();
+  await signIn(page, roleEmail('mesero'), 'Panel de Mesero');
+  await page.getByRole('tab', { name: /Pedidos Listos/ }).click();
+  await page.getByRole('button', { name: 'Marcar como Servido' }).click();
+  await expect(page.getByRole('button', { name: 'Marcar como Servido' })).toHaveCount(0);
+  await logout();
+  await signIn(page, roleEmail('cajero'), 'Panel de Caja');
+  await page.getByRole('heading', { name: 'Mesa #88', exact: true }).click();
+  await page.getByRole('button', { name: 'Efectivo', exact: true }).click();
+  await page.locator('#received').fill('50000');
+  await page.getByRole('button', { name: /Procesar Pago -/ }).click();
+  await expect(page.getByRole('dialog').getByText(/Pago Procesado/)).toBeVisible();
+  const { data: orders, error: orderError } = await db.from(table).select('value').like('key', 'order:%');
+  if (orderError) throw orderError;
+  expect(orders.find(o => o.value.tableId === tableId)?.value.status).toBe('paid');
+  await page.getByRole('dialog').getByRole('button', { name: 'Cerrar', exact: true }).click();
+  await logout();
+  await page.goto('/');
+  await page.locator('#login-email').fill(roleEmail('cliente'));
+  await page.locator('#login-password').fill(password);
+  await page.getByRole('button', { name: 'Iniciar Sesión', exact: true }).click();
+  await expect(page.getByText('Portal del Cliente', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Gestión de Usuarios', exact: true })).toHaveCount(0);
+});
