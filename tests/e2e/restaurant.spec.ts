@@ -63,10 +63,13 @@ test('administrator creates inventory item and verifies persistence', async ({ p
 test('staff roles navigate and complete a restaurant order', async ({ page }) => {
   test.setTimeout(150000);
   const tableId = 'table:e2e-' + tag;
+  const tableNumber = String(100000 + parseInt(tag.slice(0, 5), 16));
+  const tableHeading = 'Mesa #' + tableNumber;
+  const orderCard = () => page.locator('[data-slot="card"]').filter({has: page.getByRole('heading', {name: tableHeading, exact: true})});
   const menuName = 'QA Menu ' + tag;
   const menuId = 'product:e2e-' + tag;
   const { error } = await db.from(table).insert([
-    { key: tableId, value: { id: tableId, number: '88', capacity: 4, status: 'disponible' } },
+    { key: tableId, value: { id: tableId, number: tableNumber, capacity: 4, status: 'disponible' } },
     { key: menuId, value: { id: menuId, name: menuName, category: 'Platos Fuertes', price: 25000, stock: 30, minStock: 5, image: '' } }
   ]);
   if (error) throw error;
@@ -104,7 +107,7 @@ test('staff roles navigate and complete a restaurant order', async ({ page }) =>
     expect(tabsFit).toBeTruthy();
   }
   await page.setViewportSize({ width: 1280, height: 844 });
-  await page.getByText('#88', { exact: true }).click();
+  await page.getByText('#' + tableNumber, { exact: true }).click();
   await page.getByRole('tab', { name: 'Nuevo Pedido' }).click();
   await page.getByPlaceholder('Buscar platos en el menú...').fill(menuName);
   const card = page.locator('[data-slot="card"]').filter({ has: page.getByRole('heading', { name: menuName, exact: true }) });
@@ -113,18 +116,18 @@ test('staff roles navigate and complete a restaurant order', async ({ page }) =>
   await expect(page.getByText(/Pedido enviado a cocina/)).toBeVisible();
   await logout();
   await signIn(page, roleEmail('cocinero'), 'Panel de Cocina');
-  await page.getByRole('button', { name: 'Iniciar Preparación' }).click();
-  await page.getByRole('button', { name: 'Marcar Listo' }).click();
+  await orderCard().getByRole('button', { name: 'Iniciar Preparación' }).click();
+  await orderCard().getByRole('button', { name: 'Marcar Listo' }).click();
   await page.getByRole('tab', { name: 'Listas', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Mesa #88', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: tableHeading, exact: true })).toBeVisible();
   await logout();
   await signIn(page, roleEmail('mesero'), 'Panel de Mesero');
   await page.getByRole('tab', { name: /Pedidos Listos/ }).click();
-  await page.getByRole('button', { name: 'Marcar como Servido' }).click();
-  await expect(page.getByRole('button', { name: 'Marcar como Servido' })).toHaveCount(0);
+  await orderCard().getByRole('button', { name: 'Marcar como Servido' }).click();
+  await expect(orderCard()).toHaveCount(0);
   await logout();
   await signIn(page, roleEmail('cajero'), 'Panel de Caja');
-  await page.getByRole('heading', { name: 'Mesa #88', exact: true }).click();
+  await page.getByRole('heading', { name: tableHeading, exact: true }).click();
   await page.getByRole('button', { name: 'Efectivo', exact: true }).click();
   await page.locator('#received').fill('50000');
   await page.getByRole('button', { name: /Procesar Pago -/ }).click();
@@ -141,10 +144,10 @@ test('staff roles navigate and complete a restaurant order', async ({ page }) =>
   const cardOrderId = 'order:card-e2e-' + tag;
   const cardFixture = await db.from(table).insert({
     key: cardOrderId,
-    value: { id: cardOrderId, tableId, tableNumber: '88', status: 'served', createdBy: 'qa', createdAt: new Date().toISOString(), subtotal: 25000, total: 25000, items: [{ productId: menuId, name: menuName, quantity: 1, price: 25000 }] }
+    value: { id: cardOrderId, tableId, tableNumber, status: 'served', createdBy: 'qa', createdAt: new Date().toISOString(), subtotal: 25000, total: 25000, items: [{ productId: menuId, name: menuName, quantity: 1, price: 25000 }] }
   });
   if (cardFixture.error) throw cardFixture.error;
-  await page.getByRole('heading', { name: 'Mesa #88', exact: true }).click();
+  await page.locator('[data-order-id="' + cardOrderId + '"]').click();
   await page.getByRole('button', { name: 'Tarjeta', exact: true }).click();
   await page.getByRole('button', { name: /Procesar Pago -/ }).click();
   await expect(page.getByRole('dialog').getByText(/Pago Procesado/)).toBeVisible();
@@ -154,7 +157,14 @@ test('staff roles navigate and complete a restaurant order', async ({ page }) =>
   await page.getByRole('dialog').getByRole('button', { name: 'Cerrar', exact: true }).click();
   const cardPayments = await db.from(table).select('value').like('key', 'payment:%');
   if (cardPayments.error) throw cardPayments.error;
-  expect(cardPayments.data.filter(row => row.value.orderId === cardOrderId)).toHaveLength(1);
+  const cardPayment = cardPayments.data.filter(row => row.value.orderId === cardOrderId);
+  expect(cardPayment).toHaveLength(1);
+  await page.getByRole('tab', { name: 'Facturas', exact: true }).click();
+  const ref = cardPayment[0].value.id.replace(/^payment:/, '').slice(0, 8).toUpperCase();
+  const invoice = page.locator('[data-slot="card"]').filter({has: page.getByRole('heading', {name: 'Factura #' + ref, exact: true})}).filter({has: page.getByRole('button', {name: 'Imprimir', exact: true})}).last();
+  await invoice.getByRole('button', { name: 'Imprimir', exact: true }).click();
+  expect(await page.evaluate(() => (window as any).__receiptText)).toContain('Método: tarjeta');
+  expect(await page.evaluate(() => (window as any).__receiptText)).toContain(cardPayment[0].value.id.replace(/^payment:/, ''));
   await logout();
   await page.goto('/');
   await page.locator('#login-email').fill(roleEmail('cliente'));
