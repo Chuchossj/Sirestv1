@@ -184,13 +184,13 @@ function AppSidebar({
   const RoleIcon = getRoleIcon(userSession.role);
 
   return (
-    <Sidebar className="sirest-sidebar">
+    <Sidebar className="sirest-sidebar" collapsible="icon">
       <SidebarHeader className="sirest-brand-header">
         <div className="flex items-center space-x-3">
           <div className="sirest-brand-mark">
             <Utensils className="h-6 w-6" />
           </div>
-          <div>
+          <div className="sirest-brand-copy">
             <h2 className="sirest-brand-name">SIREST</h2>
             <p className="sirest-brand-subtitle">Gestión de restaurantes</p>
           </div>
@@ -209,6 +209,7 @@ function AppSidebar({
                     <SidebarMenuItem key={item.id}>
                       <SidebarMenuButton 
                         isActive={activeModule === item.id}
+                        aria-label={item.title}
                         onClick={() => navigate(item.id)}
                         className="sirest-nav-item"
                       >

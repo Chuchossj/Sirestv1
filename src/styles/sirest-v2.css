@@ -116,3 +116,14 @@ body { background:var(--sirest-bg); color:var(--sirest-ink); }
   #sirest-print-receipt td:last-child,#sirest-print-receipt th:last-child { text-align:right; }
   #sirest-print-receipt .receipt-total { font-weight:bold; font-size:15pt; border-top:2px solid #111; padding-top:8px; }
 }
+
+.sirest-panel-heading > div:last-child { flex-wrap:wrap; gap:8px; }
+.sirest-admin-charts { display:grid; grid-template-columns:minmax(0,2fr) minmax(0,1fr); gap:18px; align-items:stretch; }
+.sirest-chart-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.sirest-period-label { display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--sirest-muted); }
+.sirest-period-label select { border:1px solid var(--sirest-line); background:white; border-radius:8px; padding:7px 10px; color:var(--sirest-ink); font-size:14px; }
+.sirest-role-panel [data-slot="card-title"] { overflow-wrap:anywhere; }
+[data-collapsible="icon"] .sirest-brand-copy { display:none; }
+[data-collapsible="icon"] .sirest-brand-header { padding:16px 4px; }
+[data-collapsible="icon"] .sirest-brand-mark { width:32px; height:32px; border-radius:8px; }
+@media(max-width:1100px) { .sirest-admin-charts { grid-template-columns:minmax(0,1fr); } }

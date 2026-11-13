@@ -40,6 +40,8 @@ test('invalid login on mobile viewport', async ({ page }) => {
 });
 test('administrator creates inventory item and verifies persistence', async ({ page }) => {
   await signIn(page, email, 'Panel de Administración');
+  await page.getByLabel('Período de ventas').selectOption('14');
+  await expect(page.getByText('Ingresos cobrados durante los últimos 14 días')).toBeVisible();
   await page.getByRole('button', { name: 'Inventario', exact: true }).click();
   await page.getByRole('button', { name: 'Agregar Producto' }).click();
   const dialog = page.getByRole('dialog');

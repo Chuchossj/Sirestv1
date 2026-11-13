@@ -37,6 +37,17 @@ npm run dev -- --host 127.0.0.1
 
 Abrir http://127.0.0.1:3000. El administrador debe aprovisionarse en Auth y la tabla KV con rol `administrador`; el registro público solo crea clientes. No publicar claves privadas. La configuración local generada queda ignorada en Git; las migraciones originales permanecen en `src/supabase/migrations`.
 
+## Datos de demostración (opcional)
+Con las variables locales cargadas, ejecuta lo siguiente. Crea cinco cuentas demo, ocho mesas (101–108) y ocho productos. No sobrescribe datos ni contraseñas existentes.
+
+```powershell
+$env:SIREST_DEMO_PASSWORD = [System.Net.NetworkCredential]::new("", (Read-Host "Contraseña demo (mínimo 8 caracteres)" -AsSecureString)).Password
+node scripts/seed-demo.mjs
+Remove-Item Env:SIREST_DEMO_PASSWORD
+```
+
+Los correos son `demo-administrador@sirest.local`, `demo-mesero@sirest.local`, `demo-cocinero@sirest.local`, `demo-cajero@sirest.local` y `demo-cliente@sirest.local`. No ejecutar en producción.
+
 ## QA
 Con Vite detenido, Supabase local en ejecución y variables API_URL, ANON_KEY y SERVICE_ROLE_KEY cargadas:
 
@@ -49,4 +60,4 @@ npx playwright show-report
 Las pruebas crean usuarios y datos de prueba; para CI se usa una base local aislada y nueva. No ejecutar contra producción. GitHub Actions ejecuta el build, pruebas API y Playwright. Para evitar conflictos entre pruebas repetidas, utilizar un entorno de QA limpio, conservando aparte los datos de demostración.
 
 ## Pendientes y límites
-Ver [Issue #2](https://github.com/Chuchossj/Sirestv1/issues/2). Pendientes: validación manual del nuevo diseño y diálogo de impresión en Windows, pruebas de concurrencia, datos demo reproducibles, revisión de dependencias y despliegue controlado. Los impuestos y el servicio corresponden a las reglas del prototipo y no han sido validados fiscalmente.
+Ver [Issue #2](https://github.com/Chuchossj/Sirestv1/issues/2). Pendientes: validación manual del nuevo diseño y diálogo de impresión en Windows, confirmar ejecución de las nuevas pruebas de concurrencia, revisión de dependencias y despliegue controlado. Los impuestos y el servicio corresponden a las reglas del prototipo y no han sido validados fiscalmente.

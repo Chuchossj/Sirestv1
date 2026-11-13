@@ -127,6 +127,27 @@ await test("Cashier collects payment; order and closing reconcile", async () => 
   assert.equal(closing.report.totalCash, 32250);
   assert.equal(closing.report.totalTransactions, 1);
 });
+await test("Concurrent orders cannot oversell; concurrent payments cannot duplicate", async () => {
+  const raceProduct = (await request("/products", { method: "POST", token: admin.accessToken, body: { name: "QA Last Stock", category: "Platos Fuertes", price: 10000, stock: 1, minStock: 0 } })).product;
+  async function race(path, token, body) {
+    const response = await fetch(base + path, { method: "POST", headers: { Authorization: "Bearer " + token, apikey: anon, "Content-Type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.timeout(15000) });
+    return { status: response.status, body: await response.json() };
+  }
+  const orderPayload = { tableId: "table:qa", items: [{ productId: raceProduct.id, quantity: 1 }] };
+  const results = await Promise.all([race("/orders", waiter.accessToken, orderPayload), race("/orders", waiter.accessToken, orderPayload)]);
+  assert.deepEqual(results.map(r => r.status).sort((a,b)=>a-b), [200,409]);
+  const winner = results.find(r => r.status === 200).body.order;
+  assert.equal((await request("/products", { token: admin.accessToken })).products.find(p => p.id === raceProduct.id).stock, 0);
+  await request("/orders/" + winner.id, { method: "PUT", token: cook.accessToken, body: { status: "preparing" } });
+  await request("/orders/" + winner.id, { method: "PUT", token: cook.accessToken, body: { status: "ready" } });
+  const paymentPayload = { orderId: winner.id, paymentMethod: "tarjeta", tip: 0 };
+  const paid = await Promise.all([race("/payments", cashier.accessToken, paymentPayload), race("/payments", cashier.accessToken, paymentPayload)]);
+  assert.deepEqual(paid.map(r => r.status).sort((a,b)=>a-b), [200,409]);
+  assert.equal(paid.find(r => r.status === 200).body.payment.total, 12900);
+  const payments = await request("/payments", { token: admin.accessToken });
+  assert.equal(payments.payments.filter(p => p.orderId === winner.id).length, 1);
+  assert.equal((await request("/tables", { token: admin.accessToken })).tables.find(t => t.id === "table:qa").status, "disponible");
+});
 await test("Deactivated staff cannot log in or use prior token", async () => {
   await request("/users/" + waiter.user.id, { method: "PUT", token: admin.accessToken, body: { active: false } });
   await request("/orders", { token: waiter.accessToken, expected: 403 });

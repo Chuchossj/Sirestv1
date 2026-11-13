@@ -69,6 +69,7 @@ const chartColors = ['#0B2240','#5B2C90','#F28C1B','#FFD23F','#6C757D'];
 
 export function AdminDashboard({ onNavigate, accessToken }: { onNavigate?: (module: string) => void; accessToken: string }) {
   const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [salesPeriod, setSalesPeriod] = useState(7);
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
   const [scheduleConfig, setScheduleConfig] = useState({
     mondayStart: "10:00",
@@ -139,16 +140,17 @@ export function AdminDashboard({ onNavigate, accessToken }: { onNavigate?: (modu
   const growthLabel = yesterdaySales > 0 ? ((stats.todaySales - yesterdaySales) / yesterdaySales * 100).toFixed(1) + '% vs ayer' : 'Sin base de comparación';
   const active = (ordersData?.orders || []).filter(o => ['pending','preparing','ready','served'].includes(o.status));
   const avgWait = active.length ? Math.round(active.reduce((sum,o) => sum + Math.max(0, Date.now()-new Date(o.createdAt).getTime()),0) / active.length / 60000) : 0;
-  const salesData = Array.from({ length: 7 }, (_,i) => {
-    const date = new Date(Date.now() - (6-i)*86400000);
+  const salesData = Array.from({ length: salesPeriod }, (_,i) => {
+    const date = new Date(Date.now() - (salesPeriod-1-i)*86400000);
     const key = dayKey(date);
     const paid = completedPayments.filter(p => dayKey(new Date(p.createdAt)) === key);
     return { name: key.slice(5), ventas: paid.reduce((sum,p) => sum + Number(p.total || 0),0), pedidos: paid.length };
   });
-  const paidToday = new Set(completedPayments.filter(p => dayKey(new Date(p.createdAt)) === todayKey).map(p => p.orderId));
+  const periodStart = dayKey(new Date(Date.now() - (salesPeriod - 1) * 86400000));
+  const paidInPeriod = new Set(completedPayments.filter(p => { const day = dayKey(new Date(p.createdAt)); return day >= periodStart && day <= todayKey; }).map(p => p.orderId));
   const quantities = new Map<string, number>();
   for (const order of ordersData?.orders || []) {
-    if (!paidToday.has(order.id)) continue;
+    if (!paidInPeriod.has(order.id)) continue;
     for (const item of order.items || []) quantities.set(item.name, (quantities.get(item.name)||0) + Number(item.quantity||0));
   }
   const topProducts = [...quantities.entries()].sort((a,b)=>b[1]-a[1]).slice(0,5).map(([name,value],i)=>({ name,value,color:chartColors[i] }));
@@ -486,14 +488,15 @@ export function AdminDashboard({ onNavigate, accessToken }: { onNavigate?: (modu
       </div>
 
       {/* Gráficos principales */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="sirest-admin-charts">
         {/* Ventas semanales */}
         <Card className="lg:col-span-2 border-0 shadow-lg">
           <CardHeader className="border-b border-gray-100">
-            <CardTitle className="text-xl text-[#0B2240]">Análisis de Ventas Semanal</CardTitle>
-            <CardDescription>
-              Ingresos cobrados durante los últimos siete días
-            </CardDescription>
+            <div className="sirest-chart-heading">
+              <div><CardTitle className="text-xl text-[#0B2240]">Análisis de Ventas</CardTitle>
+                <CardDescription>Ingresos cobrados durante los últimos {salesPeriod} días</CardDescription></div>
+              <label className="sirest-period-label">Período<select aria-label="Período de ventas" value={salesPeriod} onChange={e => setSalesPeriod(Number(e.target.value))}><option value={7}>7 días</option><option value={14}>14 días</option><option value={30}>30 días</option></select></label>
+            </div>
           </CardHeader>
           <CardContent className="pt-6">
             <ResponsiveContainer width="100%" height={320}>
@@ -525,11 +528,11 @@ export function AdminDashboard({ onNavigate, accessToken }: { onNavigate?: (modu
           <CardHeader className="border-b border-gray-100">
             <CardTitle className="text-xl text-[#0B2240]">Productos Más Vendidos</CardTitle>
             <CardDescription>
-              Distribución de ventas hoy
+              Unidades vendidas en los últimos {salesPeriod} días
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
-            <ResponsiveContainer width="100%" height={240}>
+            {topProducts.length === 0 ? <p className="sirest-empty">No hay productos vendidos en este período.</p> : <ResponsiveContainer width="100%" height={240}>
               <PieChart>
                 <Pie
                   data={topProducts}
@@ -546,7 +549,7 @@ export function AdminDashboard({ onNavigate, accessToken }: { onNavigate?: (modu
                 </Pie>
                 <Tooltip formatter={(value) => [`${value} unidades`, 'Ventas']} />
               </PieChart>
-            </ResponsiveContainer>
+            </ResponsiveContainer>}
             <div className="space-y-2 mt-4">
               {topProducts.map((product, index) => (
                 <div key={index} className="flex items-center justify-between text-sm">
