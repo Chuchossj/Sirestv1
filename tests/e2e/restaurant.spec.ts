@@ -90,6 +90,18 @@ test('staff roles navigate and complete a restaurant order', async ({ page }) =>
   await signIn(page, roleEmail('mesero'), 'Panel de Mesero');
   await expect(page.getByRole('button', { name: 'Gestión de Usuarios', exact: true })).toHaveCount(0);
   await page.getByRole('tab', { name: 'Mis Mesas' }).click();
+  for (const width of [390, 1280]) {
+    await page.setViewportSize({ width, height: 844 });
+    const tabsFit = await page.locator('.sirest-role-tabs').evaluate(list => {
+      const bounds = list.getBoundingClientRect();
+      return Array.from(list.querySelectorAll('[role=tab]')).every(tab => {
+        const r = tab.getBoundingClientRect();
+        return r.left >= bounds.left - 1 && r.right <= bounds.right + 1 && r.top >= bounds.top - 1 && r.bottom <= bounds.bottom + 1;
+      });
+    });
+    expect(tabsFit).toBeTruthy();
+  }
+  await page.setViewportSize({ width: 1280, height: 844 });
   await page.getByText('#88', { exact: true }).click();
   await page.getByRole('tab', { name: 'Nuevo Pedido' }).click();
   await page.getByPlaceholder('Buscar platos en el menú...').fill(menuName);
@@ -118,6 +130,10 @@ test('staff roles navigate and complete a restaurant order', async ({ page }) =>
   const { data: orders, error: orderError } = await db.from(table).select('value').like('key', 'order:%');
   if (orderError) throw orderError;
   expect(orders.find(o => o.value.tableId === tableId)?.value.status).toBe('paid');
+  await page.evaluate(() => { window.print = () => { (window as any).__receiptText = document.getElementById('sirest-print-receipt')?.textContent; }; });
+  await page.getByRole('dialog').getByRole('button', { name: 'Imprimir', exact: true }).click();
+  expect(await page.evaluate(() => (window as any).__receiptText)).toContain('Método: efectivo');
+  expect(await page.evaluate(() => (window as any).__receiptText)).toContain(menuName);
   await page.getByRole('dialog').getByRole('button', { name: 'Cerrar', exact: true }).click();
   await logout();
   await page.goto('/');

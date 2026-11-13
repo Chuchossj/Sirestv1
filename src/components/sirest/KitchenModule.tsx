@@ -112,9 +112,9 @@ export function KitchenModule({ activeTab, accessToken }: KitchenModuleProps) {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="sirest-role-panel sirest-kitchen space-y-8">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+      <div className="sirest-panel-heading flex flex-col lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-900 to-purple-900 bg-clip-text text-transparent">
             Panel de Cocina
@@ -135,7 +135,7 @@ export function KitchenModule({ activeTab, accessToken }: KitchenModuleProps) {
       </div>
 
       {/* Estadísticas de cocina */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="sirest-kpi-grid">
         <Card className="border-0 shadow-lg bg-gradient-to-br from-yellow-500 to-yellow-600 text-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium opacity-90">Pendientes</CardTitle>
@@ -186,7 +186,7 @@ export function KitchenModule({ activeTab, accessToken }: KitchenModuleProps) {
       </div>
 
       <Tabs value={activeInternalTab} onValueChange={setActiveInternalTab} className="space-y-8">
-        <TabsList className="grid w-full max-w-lg grid-cols-3 bg-white border shadow-sm">
+        <TabsList className="sirest-role-tabs sirest-tabs-3">
           <TabsTrigger value="active" className="data-[state=active]:bg-orange-100 data-[state=active]:text-orange-900">
             Órdenes Activas
           </TabsTrigger>
@@ -214,10 +214,12 @@ export function KitchenModule({ activeTab, accessToken }: KitchenModuleProps) {
             </Card>
           )}
 
+          <div className="sirest-kitchen-board">
           {/* Órdenes pendientes */}
-          <div className="space-y-6">
+          <div className="sirest-kitchen-lane space-y-6">
             <h3 className="text-2xl font-semibold text-blue-900">Órdenes Pendientes</h3>
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+            <div className="sirest-kitchen-tickets">
+              {getOrdersByStatus("pending").length === 0 && <p className="sirest-empty">No hay pedidos pendientes.</p>}
               {getOrdersByStatus("pending").map((order: any) => {
                 const orderTime = new Date(order.createdAt).getTime();
                 const now = new Date().getTime();
@@ -283,9 +285,10 @@ export function KitchenModule({ activeTab, accessToken }: KitchenModuleProps) {
           </div>
 
           {/* Órdenes en preparación */}
-          <div className="space-y-6">
+          <div className="sirest-kitchen-lane space-y-6">
             <h3 className="text-2xl font-semibold text-blue-900">En Preparación</h3>
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+            <div className="sirest-kitchen-tickets">
+              {getOrdersByStatus("preparing").length === 0 && <p className="sirest-empty">No hay pedidos en preparación.</p>}
               {getOrdersByStatus("preparing").map((order: any) => {
                 const orderTime = new Date(order.createdAt).getTime();
                 const now = new Date().getTime();
@@ -344,6 +347,7 @@ export function KitchenModule({ activeTab, accessToken }: KitchenModuleProps) {
               })}
             </div>
           </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="ready" className="space-y-8">
@@ -356,7 +360,7 @@ export function KitchenModule({ activeTab, accessToken }: KitchenModuleProps) {
               </Button>
             </div>
             
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+            <div className="sirest-kitchen-tickets">
               {getOrdersByStatus("ready").map((order: any) => (
                 <Card key={order.id} className="border-green-200 bg-green-50 border-0 shadow-lg">
                   <CardHeader className="pb-3 border-b border-green-200">

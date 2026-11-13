@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { useRealtimeData, apiRequest } from "../../utils/useRealtimeData";
 import { generateInvoice } from "../../utils/pdfGenerator";
+import { printPaymentReceipt } from "../../utils/printReceipt";
 
 interface CashierModuleProps {
   activeTab?: string;
@@ -45,6 +46,8 @@ export function CashierModule({ activeTab, accessToken }: CashierModuleProps) {
   const [tipAmount, setTipAmount] = useState<string>("");
   const [customerNotes, setCustomerNotes] = useState<string>("");
   const [showReceipt, setShowReceipt] = useState(false);
+  const [lastReceipt, setLastReceipt] = useState<{ payment: any; order: any } | null>(null);
+  const [processing, setProcessing] = useState(false);
   const [cashCount, setCashCount] = useState("");
   const [closingNotes, setClosingNotes] = useState("");
   const [selectedInvoice, setSelectedInvoice] = useState<any | null>(null);
@@ -106,6 +109,7 @@ export function CashierModule({ activeTab, accessToken }: CashierModuleProps) {
   };
 
   const processPayment = async () => {
+    if (processing) return;
     if (!selectedOrder || !paymentMethod) {
       toast.error("Complete todos los campos requeridos");
       return;
@@ -116,6 +120,7 @@ export function CashierModule({ activeTab, accessToken }: CashierModuleProps) {
       return;
     }
 
+    setProcessing(true);
     try {
       const totals = calculateTotals(selectedOrder);
       if (paymentMethod === "efectivo" && Number(receivedAmount) < totals.total) { toast.error("Efectivo insuficiente"); return; }
@@ -148,7 +153,9 @@ export function CashierModule({ activeTab, accessToken }: CashierModuleProps) {
 
       if (response.success) {
         toast.success("Pago procesado exitosamente");
+        setLastReceipt({ payment: response.payment, order: selectedOrder });
         setShowReceipt(true);
+        setSelectedOrder(null);
         resetForm();
         refetchOrders();
         refetchPayments();
@@ -156,7 +163,14 @@ export function CashierModule({ activeTab, accessToken }: CashierModuleProps) {
     } catch (error) {
       console.error("Error procesando pago:", error);
       toast.error(error instanceof Error ? error.message : "Error al procesar el pago");
+    } finally {
+      setProcessing(false);
     }
+  };
+
+  const printReceipt = (payment: any, order: any) => {
+    try { printPaymentReceipt(payment, order); }
+    catch { toast.error("No se pudo preparar la impresión. Intenta nuevamente o descarga el PDF."); }
   };
 
   const resetForm = () => {
@@ -214,9 +228,9 @@ export function CashierModule({ activeTab, accessToken }: CashierModuleProps) {
   const [activeInternalTab, setActiveInternalTab] = useState(getDefaultTab());
 
   return (
-    <div className="space-y-8">
+    <div className="sirest-role-panel sirest-cashier space-y-8">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+      <div className="sirest-panel-heading flex flex-col lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-900 to-purple-900 bg-clip-text text-transparent">
             Panel de Caja
@@ -237,7 +251,7 @@ export function CashierModule({ activeTab, accessToken }: CashierModuleProps) {
       </div>
 
       {/* Estadísticas del día */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="sirest-kpi-grid">
         <Card className="border-0 shadow-lg bg-gradient-to-br from-green-500 to-green-600 text-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium opacity-90">Ventas del Día</CardTitle>
@@ -293,7 +307,7 @@ export function CashierModule({ activeTab, accessToken }: CashierModuleProps) {
       </div>
 
       <Tabs value={activeInternalTab} onValueChange={setActiveInternalTab} className="space-y-8">
-        <TabsList className="grid w-full max-w-2xl grid-cols-4 bg-white border shadow-sm">
+        <TabsList className="sirest-role-tabs sirest-tabs-4">
           <TabsTrigger value="pending" className="data-[state=active]:bg-orange-100 data-[state=active]:text-orange-900">
             Órdenes Pendientes
           </TabsTrigger>
@@ -310,7 +324,7 @@ export function CashierModule({ activeTab, accessToken }: CashierModuleProps) {
         </TabsList>
 
         <TabsContent value="pending" className="space-y-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="sirest-checkout-grid">
             {/* Órdenes pendientes */}
             <Card className="border-0 shadow-lg">
               <CardHeader className="border-b border-gray-100">
@@ -529,22 +543,13 @@ export function CashierModule({ activeTab, accessToken }: CashierModuleProps) {
                         className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white" 
                         size="lg"
                         onClick={processPayment}
-                        disabled={!paymentMethod || (paymentMethod === "efectivo" && !receivedAmount)}
+                        disabled={processing || !paymentMethod || (paymentMethod === "efectivo" && (!receivedAmount || Number(receivedAmount) < calculateTotals(selectedOrder).total))}
                       >
                         <CreditCard className="h-5 w-5 mr-2" />
-                        Procesar Pago - ${calculateTotals(selectedOrder).total.toLocaleString()}
+                        {processing ? "Procesando…" : `Procesar Pago - ${calculateTotals(selectedOrder).total.toLocaleString()}`}
                       </Button>
                       
-                      <div className="grid grid-cols-2 gap-2">
-                        <Button variant="outline" size="sm" className="border-blue-300 text-blue-700 hover:bg-blue-50">
-                          <Printer className="h-4 w-4 mr-2" />
-                          Factura
-                        </Button>
-                        <Button variant="outline" size="sm" className="border-purple-300 text-purple-700 hover:bg-purple-50">
-                          <FileText className="h-4 w-4 mr-2" />
-                          Recibo
-                        </Button>
-                      </div>
+                      <p className="sirest-muted-note">El comprobante estará disponible al confirmar el pago.</p>
                     </div>
                   </>
                 ) : (
@@ -695,43 +700,7 @@ export function CashierModule({ activeTab, accessToken }: CashierModuleProps) {
                                     size="sm"
                                     variant="outline"
                                     className="border-[#0B2240] text-[#0B2240] hover:bg-[#0B2240] hover:text-white"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      const relatedOrder = orders.find((o: any) => o.id === payment.orderId);
-                                      const waiter = users.find((u: any) => u.id === relatedOrder?.createdBy);
-                                      const doc = generateInvoice({
-                                        invoiceNumber: `INV-${payment.id.slice(0, 8).toUpperCase()}`,
-                                        date: new Date(payment.createdAt).toLocaleDateString('es-CO'),
-                                        customerName: payment.customerName,
-                                        customerPhone: payment.customerPhone,
-                                        tableNumber: payment.tableNumber,
-                                        waiterName: waiter?.name || payment.waiterName,
-                                        items: relatedOrder?.items?.map((item: any) => ({
-                                          name: item.name,
-                                          quantity: item.quantity,
-                                          price: item.price,
-                                          total: item.price * item.quantity
-                                        })) || [],
-                                        subtotal: payment.subtotal || 0,
-                                        service: payment.service || 0,
-                                        tax: payment.tax || 0,
-                                        taxRate: 19,
-                                        tip: payment.tip || 0,
-                                        total: payment.total || 0,
-                                        paymentMethod: payment.paymentMethod
-                                      });
-                                      
-                                      // Generar PDF y abrir en nueva ventana para imprimir
-                                      const pdfBlob = doc.output('blob');
-                                      const url = URL.createObjectURL(pdfBlob);
-                                      const printWindow = window.open(url);
-                                      if (printWindow) {
-                                        printWindow.onload = () => {
-                                          printWindow.print();
-                                        };
-                                      }
-                                      toast.success('📄 Preparando impresión...');
-                                    }}
+                                    onClick={(e) => { e.stopPropagation(); printReceipt(payment, relatedOrder); }}
                                   >
                                     <Printer className="h-4 w-4 mr-1" />
                                     Imprimir
@@ -1167,40 +1136,7 @@ export function CashierModule({ activeTab, accessToken }: CashierModuleProps) {
                   <Button
                     variant="outline"
                     className="border-[#5B2C90] text-[#5B2C90] hover:bg-[#5B2C90] hover:text-white transition-all"
-                    onClick={() => {
-                      const doc = generateInvoice({
-                        invoiceNumber: `INV-${selectedInvoice.id.slice(0, 8).toUpperCase()}`,
-                        date: new Date(selectedInvoice.createdAt).toLocaleDateString('es-CO'),
-                        customerName: selectedInvoice.customerName,
-                        customerPhone: selectedInvoice.customerPhone,
-                        tableNumber: selectedInvoice.tableNumber,
-                        waiterName: waiter?.name,
-                        items: relatedOrder?.items?.map((item: any) => ({
-                          name: item.name,
-                          quantity: item.quantity,
-                          price: item.price,
-                          total: item.price * item.quantity
-                        })) || [],
-                        subtotal: selectedInvoice.subtotal || 0,
-                        service: selectedInvoice.service || 0,
-                        tax: selectedInvoice.tax || 0,
-                        taxRate: 19,
-                        tip: selectedInvoice.tip || 0,
-                        total: selectedInvoice.total || 0,
-                        paymentMethod: selectedInvoice.paymentMethod
-                      });
-                      
-                      // Generar el PDF y abrirlo en nueva ventana para imprimir
-                      const pdfBlob = doc.output('blob');
-                      const url = URL.createObjectURL(pdfBlob);
-                      const printWindow = window.open(url);
-                      if (printWindow) {
-                        printWindow.onload = () => {
-                          printWindow.print();
-                        };
-                      }
-                      toast.success('Preparando impresión...');
-                    }}
+                    onClick={() => printReceipt(selectedInvoice, relatedOrder)}
                   >
                     <Printer className="h-4 w-4 mr-2" />
                     Imprimir
@@ -1337,7 +1273,7 @@ export function CashierModule({ activeTab, accessToken }: CashierModuleProps) {
             </div>
             <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
               <p className="text-sm text-blue-800">
-                <span className="font-semibold">Nota:</span> La factura se enviará como archivo PDF adjunto al correo electrónico proporcionado.
+                <span className="font-semibold">Nota:</span> El envío por correo todavía no está disponible. Puedes descargar el PDF y compartirlo manualmente.
               </p>
             </div>
             <div className="flex space-x-2">
@@ -1359,11 +1295,7 @@ export function CashierModule({ activeTab, accessToken }: CashierModuleProps) {
                     return;
                   }
                   
-                  // Aquí iría la lógica para enviar el email
-                  // Por ahora simulamos el envío
-                  toast.success(`✅ Factura enviada a ${emailAddress}`);
-                  setShowEmailDialog(false);
-                  setEmailAddress("");
+                  toast.info("El envío por correo aún no está configurado. Descarga el PDF para compartirlo.");
                 }}
               >
                 <Send className="h-4 w-4 mr-2" />
@@ -1386,8 +1318,9 @@ export function CashierModule({ activeTab, accessToken }: CashierModuleProps) {
           <div className="text-center space-y-4 py-4">
             <CheckCircle className="h-16 w-16 text-green-500 mx-auto" />
             <p className="text-lg font-semibold">Pago realizado correctamente</p>
+            {lastReceipt && <div className="sirest-receipt-summary"><span>Mesa #{lastReceipt.payment.tableNumber}</span><strong>${Number(lastReceipt.payment.total).toLocaleString("es-CO")}</strong><span>Método: {lastReceipt.payment.paymentMethod}</span></div>}
             <div className="flex space-x-2">
-              <Button variant="outline" className="flex-1">
+              <Button variant="outline" className="flex-1" disabled={!lastReceipt} onClick={() => lastReceipt && printReceipt(lastReceipt.payment, lastReceipt.order)}>
                 <Printer className="h-4 w-4 mr-2" />
                 Imprimir
               </Button>

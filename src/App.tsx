@@ -348,7 +348,7 @@ function MainContent({
 
   return (
     <main className="sirest-main">
-      <div className="sirest-content">
+      <div className="sirest-content" data-role={userSession.role}>
         {renderContent()}
       </div>
     </main>

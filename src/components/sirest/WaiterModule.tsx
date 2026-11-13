@@ -205,9 +205,9 @@ export function WaiterModule({ activeTab, accessToken }: WaiterModuleProps) {
   const [activeInternalTab, setActiveInternalTab] = useState(getDefaultTab());
 
   return (
-    <div className="space-y-6">
+    <div className="sirest-role-panel sirest-waiter space-y-6">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+      <div className="sirest-panel-heading flex flex-col lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">
             Panel de Mesero
@@ -231,7 +231,7 @@ export function WaiterModule({ activeTab, accessToken }: WaiterModuleProps) {
       </div>
 
       <Tabs value={activeInternalTab} onValueChange={setActiveInternalTab} className="space-y-6">
-        <TabsList className="grid w-full max-w-2xl grid-cols-3 bg-white border border-gray-200 shadow-sm">
+        <TabsList className="sirest-role-tabs sirest-tabs-3">
           <TabsTrigger value="mesas" className="data-[state=active]:bg-gray-900 data-[state=active]:text-white">
             <Utensils className="h-4 w-4 mr-2" />
             Mis Mesas
@@ -244,7 +244,7 @@ export function WaiterModule({ activeTab, accessToken }: WaiterModuleProps) {
             <ChefHat className="h-4 w-4 mr-2" />
             Pedidos Listos
             {readyOrders.length > 0 && (
-              <Badge className="absolute -top-2 -right-2 bg-red-600 text-white text-xs px-1.5 py-0.5 min-w-[20px] h-5 flex items-center justify-center rounded-full">
+              <Badge className="sirest-tab-count bg-red-600 text-white text-xs">
                 {readyOrders.length}
               </Badge>
             )}
@@ -253,7 +253,7 @@ export function WaiterModule({ activeTab, accessToken }: WaiterModuleProps) {
 
         <TabsContent value="mesas" className="space-y-6">
           {/* Resumen de mesas */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="sirest-kpi-grid sirest-waiter-kpis">
             <Card className="border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
@@ -310,16 +310,21 @@ export function WaiterModule({ activeTab, accessToken }: WaiterModuleProps) {
               <CardDescription>Vista completa del restaurante</CardDescription>
             </CardHeader>
             <CardContent className="pt-6">
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+              <div className="sirest-table-grid">
                 {tables.map((table: any) => {
                   const Icon = statusIcons[table.status as keyof typeof statusIcons] || Users;
                   
                   return (
                     <Card 
                       key={table.id} 
-                      className={`cursor-pointer transition-all hover:shadow-md border-2 ${
+                      className={`sirest-table-tile cursor-pointer transition-all hover:shadow-md border-2 ${
                         selectedTable?.id === table.id ? "ring-2 ring-gray-900 border-gray-900" : "border-gray-200"
                       }`}
+                      role="button"
+                      tabIndex={0}
+                      aria-pressed={selectedTable?.id === table.id}
+                      data-table-status={table.status}
+                      onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedTable(table); } }}
                       onClick={() => setSelectedTable(table)}
                     >
                       <CardContent className="p-4 text-center space-y-2">

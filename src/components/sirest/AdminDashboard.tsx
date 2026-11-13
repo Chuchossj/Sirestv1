@@ -345,9 +345,9 @@ export function AdminDashboard({ onNavigate, accessToken }: { onNavigate?: (modu
   };
 
   return (
-    <div className="space-y-8">
+    <div className="sirest-role-panel sirest-admin space-y-8">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+      <div className="sirest-panel-heading flex flex-col lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h1 className="text-4xl font-bold bg-gradient-to-r from-[#0B2240] to-[#5B2C90] bg-clip-text text-transparent">
             Panel de Administración
