@@ -210,7 +210,7 @@ export function AdminSupervisionView({ module, accessToken }: AdminSupervisionVi
             <CardContent className="p-6 text-center">
               <Activity className="h-10 w-10 mx-auto mb-3 opacity-90" />
               <div className="text-3xl font-bold">
-                {staff.length > 0 ? Math.round(staff.reduce((sum: number, s: any) => sum + (s.performance || 0), 0) / staff.length) : 0}%
+                Sin datos
               </div>
               <p className="text-sm opacity-90">Rendimiento Promedio</p>
             </CardContent>
@@ -219,7 +219,7 @@ export function AdminSupervisionView({ module, accessToken }: AdminSupervisionVi
           <Card className="border-0 shadow-lg bg-gradient-to-br from-orange-500 to-orange-600 text-white">
             <CardContent className="p-6 text-center">
               <Star className="h-10 w-10 mx-auto mb-3 opacity-90" />
-              <div className="text-3xl font-bold">98%</div>
+              <div className="text-3xl font-bold">Sin datos</div>
               <p className="text-sm opacity-90">Satisfacción</p>
             </CardContent>
           </Card>
@@ -265,10 +265,10 @@ export function AdminSupervisionView({ module, accessToken }: AdminSupervisionVi
                             <div className="w-24 bg-gray-200 rounded-full h-2">
                               <div 
                                 className="bg-green-500 h-2 rounded-full" 
-                                style={{ width: `${staffStatus.performance}%` }}
+                                style={{ width: "0%" }}
                               />
                             </div>
-                            <span className="text-sm font-medium text-gray-700">{staffStatus.performance}%</span>
+                            <span className="text-sm font-medium text-gray-700">Sin datos</span>
                           </div>
                         </div>
                       )}
