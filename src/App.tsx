@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { SecureLogin } from "./components/sirest/SecureLogin";
 import { ClientPortal } from "./components/sirest/ClientPortal";
 import { AdminDashboard } from "./components/sirest/AdminDashboard";
@@ -24,7 +24,8 @@ import {
   SidebarMenuButton, 
   SidebarMenuItem, 
   SidebarProvider, 
-  SidebarTrigger
+  SidebarTrigger,
+  useSidebar
 } from "./components/ui/sidebar";
 import { Button } from "./components/ui/button";
 import { Badge } from "./components/ui/badge";
@@ -95,9 +96,9 @@ const getMenuItems = (role: string) => {
       {
         title: "Gestión de Mesas",
         items: [
-          { title: "Mis Mesas", icon: Utensils, id: "tables", badge: "4" },
+          { title: "Mis Mesas", icon: Utensils, id: "tables", badge: null },
           { title: "Nuevo Pedido", icon: FileText, id: "new-order", badge: null },
-          { title: "Pedidos Activos", icon: Clock, id: "active-orders", badge: "7" }
+          { title: "Pedidos Activos", icon: Clock, id: "active-orders", badge: null }
         ]
       }
     ],
@@ -111,7 +112,7 @@ const getMenuItems = (role: string) => {
       {
         title: "Procesamiento",
         items: [
-          { title: "Órdenes a Cobrar", icon: CreditCard, id: "pending-payments", badge: "3" },
+          { title: "Órdenes a Cobrar", icon: CreditCard, id: "pending-payments", badge: null },
           { title: "Transacciones", icon: Receipt, id: "transactions", badge: null },
           { title: "Caja y Arqueo", icon: Calculator, id: "cash-management", badge: null }
         ]
@@ -127,9 +128,9 @@ const getMenuItems = (role: string) => {
       {
         title: "Producción",
         items: [
-          { title: "Órdenes Pendientes", icon: Clock, id: "pending-orders", badge: "8" },
-          { title: "En Preparación", icon: ChefHat, id: "preparing-orders", badge: "3" },
-          { title: "Órdenes Listas", icon: Receipt, id: "ready-orders", badge: "2" }
+          { title: "Órdenes Pendientes", icon: Clock, id: "pending-orders", badge: null },
+          { title: "En Preparación", icon: ChefHat, id: "preparing-orders", badge: null },
+          { title: "Órdenes Listas", icon: Receipt, id: "ready-orders", badge: null }
         ]
       }
     ]
@@ -178,18 +179,20 @@ function AppSidebar({
   onLogout: () => void;
 }) {
   const menuItems = getMenuItems(userSession.role);
+  const { isMobile, setOpenMobile } = useSidebar();
+  const navigate = (id: string) => { setActiveModule(id); if (isMobile) setOpenMobile(false); };
   const RoleIcon = getRoleIcon(userSession.role);
 
   return (
-    <Sidebar className="border-r border-gray-200">
-      <SidebarHeader className="border-b border-gray-200 px-6 py-4 bg-gray-50">
+    <Sidebar className="sirest-sidebar">
+      <SidebarHeader className="sirest-brand-header">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-gray-900 rounded-lg flex items-center justify-center shadow">
-            <Utensils className="h-6 w-6 text-white" />
+          <div className="sirest-brand-mark">
+            <Utensils className="h-6 w-6" />
           </div>
           <div>
-            <h2 className="font-bold text-lg text-gray-900">SIREST</h2>
-            <p className="text-xs text-gray-600">Globatech S.A.S</p>
+            <h2 className="sirest-brand-name">SIREST</h2>
+            <p className="sirest-brand-subtitle">Gestión de restaurantes</p>
           </div>
         </div>
       </SidebarHeader>
@@ -197,7 +200,7 @@ function AppSidebar({
       <SidebarContent>
         {menuItems.map((group, index) => (
           <SidebarGroup key={index}>
-            <SidebarGroupLabel className="text-gray-700 font-medium text-xs uppercase tracking-wide">{group.title}</SidebarGroupLabel>
+            <SidebarGroupLabel className="sirest-nav-label">{group.title}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {group.items.map((item) => {
@@ -206,8 +209,8 @@ function AppSidebar({
                     <SidebarMenuItem key={item.id}>
                       <SidebarMenuButton 
                         isActive={activeModule === item.id}
-                        onClick={() => setActiveModule(item.id)}
-                        className="w-full hover:bg-gray-100 data-[state=active]:bg-gray-900 data-[state=active]:text-white transition-colors"
+                        onClick={() => navigate(item.id)}
+                        className="sirest-nav-item"
                       >
                         <Icon className="h-4 w-4" />
                         <span>{item.title}</span>
@@ -226,12 +229,12 @@ function AppSidebar({
         ))}
       </SidebarContent>
       
-      <SidebarFooter className="border-t border-gray-200">
+      <SidebarFooter className="sirest-nav-footer">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton 
-              onClick={() => setActiveModule("configuration")}
-              className={`hover:bg-gray-100 transition-colors ${activeModule === "configuration" ? "bg-gray-900 text-white" : ""}`}
+              onClick={() => navigate("configuration")}
+              isActive={activeModule === "configuration"} className="sirest-nav-item"
             >
               <Settings className="h-4 w-4" />
               <span>Configuración</span>
@@ -239,15 +242,15 @@ function AppSidebar({
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton 
-              onClick={() => setActiveModule("profile")}
-              className={`hover:bg-gray-100 transition-colors ${activeModule === "profile" ? "bg-gray-900 text-white" : ""}`}
+              onClick={() => navigate("profile")}
+              isActive={activeModule === "profile"} className="sirest-nav-item"
             >
               <User className="h-4 w-4" />
               <span>Mi Perfil</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton onClick={onLogout} className="hover:bg-red-50 text-red-600 transition-colors">
+            <SidebarMenuButton onClick={onLogout} className="sirest-nav-item sirest-logout">
               <LogOut className="h-4 w-4" />
               <span>Cerrar Sesión</span>
             </SidebarMenuButton>
@@ -344,8 +347,8 @@ function MainContent({
   };
 
   return (
-    <main className="flex-1 overflow-auto bg-gray-50">
-      <div className="container mx-auto py-8 px-6">
+    <main className="sirest-main">
+      <div className="sirest-content">
         {renderContent()}
       </div>
     </main>
@@ -355,7 +358,6 @@ function MainContent({
 export default function App() {
   const [userSession, setUserSession] = useState<UserSession | null>(null);
   const [activeModule, setActiveModule] = useState("dashboard");
-  const [notifications, setNotifications] = useState<Array<{id: string, message: string, type: 'success' | 'info' | 'warning'}>>([]);
   const [showPasswordReset, setShowPasswordReset] = useState(false);
   const handleLogin = (role: string, username: string, userData: any, accessToken: string) => {
     setUserSession({ role, username, userData, accessToken });
@@ -376,33 +378,6 @@ export default function App() {
     }
   };
 
-  // Simular notificaciones del sistema para demostrar interactividad
-  useEffect(() => {
-    if (!userSession) return;
-
-    const notificationInterval = setInterval(() => {
-      const systemNotifications = [
-        { message: "Nuevo pedido recibido en Mesa 5", type: "info" as const },
-        { message: "Pedido listo para servir - Mesa 12", type: "success" as const },
-        { message: "Stock bajo: Tomates Cherry", type: "warning" as const },
-        { message: "Pago procesado exitosamente - Mesa 8", type: "success" as const },
-        { message: "Nueva reserva para esta noche", type: "info" as const }
-      ];
-
-      const randomNotification = systemNotifications[Math.floor(Math.random() * systemNotifications.length)];
-      const notificationId = Date.now().toString();
-      
-      setNotifications(prev => [...prev, { id: notificationId, ...randomNotification }]);
-
-      // Limpiar notificación después de 5 segundos
-      setTimeout(() => {
-        setNotifications(prev => prev.filter(n => n.id !== notificationId));
-      }, 5000);
-    }, 8000); // Nueva notificación cada 8 segundos
-
-    return () => clearInterval(notificationInterval);
-  }, [userSession]);
-
   // Si no hay sesión, mostrar login o reset de contraseña
   if (!userSession) {
     if (showPasswordReset) {
@@ -413,72 +388,35 @@ export default function App() {
 
   // Interfaz completamente aislada para clientes
   if (userSession.role === "cliente") {
-    return <ClientPortal userData={userSession.userData} onLogout={handleLogout} accessToken={userSession.accessToken} />;
+    return <div className="sirest-client"><ClientPortal userData={userSession.userData} onLogout={handleLogout} accessToken={userSession.accessToken} /><Toaster /></div>;
   }
 
   const RoleIcon = getRoleIcon(userSession.role);
 
   return (
     <SidebarProvider>
-      <div className="flex h-screen w-full bg-white">
+      <div className="sirest-shell">
         <AppSidebar 
           userSession={userSession}
           activeModule={activeModule} 
           setActiveModule={setActiveModule}
           onLogout={handleLogout}
         />
-        <div className="flex flex-col flex-1">
-          <header className="border-b border-gray-200 bg-white px-6 py-4 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <SidebarTrigger />
-                <div className="flex items-center space-x-3">
-                  <Badge variant="outline" className="bg-gray-50 border-gray-300 text-gray-700 px-3 py-1">
-                    <Building2 className="h-3 w-3 mr-2" />
-                    SIREST • Globatech S.A.S
-                  </Badge>
-                  <Badge className={getRoleColor(userSession.role)}>
-                    <RoleIcon className="h-3 w-3 mr-2" />
-                    {userSession.role.charAt(0).toUpperCase() + userSession.role.slice(1)}
-                  </Badge>
-                  <Badge variant="outline" className="bg-gray-100 border-gray-300 text-gray-700">
-                    Módulo: {getModuleName(activeModule, userSession.role)}
-                  </Badge>
-                </div>
+        <div className="sirest-workspace">
+          <header className="sirest-topbar">
+            <div className="sirest-topbar-left">
+              <SidebarTrigger aria-label="Abrir o cerrar menú" />
+              <div className="sirest-breadcrumb">
+                <span>Espacio de trabajo</span>
+                <strong>{getModuleName(activeModule, userSession.role)}</strong>
               </div>
-              <div className="flex items-center space-x-4">
-                {/* Notificaciones */}
-                {notifications.length > 0 && (
-                  <div className="flex flex-col space-y-1 max-w-xs">
-                    {notifications.slice(-2).map((notification) => (
-                      <div
-                        key={notification.id}
-                        className={`text-xs px-3 py-2 rounded-lg animate-fade-in shadow-sm ${
-                          notification.type === 'success' ? 'bg-green-100 text-green-800 border border-green-200' :
-                          notification.type === 'warning' ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' :
-                          'bg-blue-100 text-blue-800 border border-blue-200'
-                        }`}
-                      >
-                        {notification.message}
-                      </div>
-                    ))}
-                  </div>
-                )}
-                
-                <div className="text-right">
-                  <p className="text-sm font-medium text-gray-900">{userSession.username}</p>
-                  <p className="text-xs text-gray-600">
-                    {userSession.role === "administrador" ? "Administrador del Sistema" :
-                     userSession.role === "mesero" ? "Encargado de Servicio" :
-                     userSession.role === "cajero" ? "Especialista en Pagos" :
-                     userSession.role === "cocinero" ? "Chef de Cocina" :
-                     "Usuario"}
-                  </p>
-                </div>
-                <div className="w-10 h-10 bg-gray-900 rounded-full flex items-center justify-center shadow">
-                  <RoleIcon className="h-5 w-5 text-white" />
-                </div>
+            </div>
+            <div className="sirest-account">
+              <div className="sirest-account-copy">
+                <strong>{userSession.username}</strong>
+                <span className="capitalize">{userSession.role}</span>
               </div>
+              <div className="sirest-avatar"><RoleIcon className="h-5 w-5" /></div>
             </div>
           </header>
           <MainContent userSession={userSession} activeModule={activeModule} onUserUpdate={handleUserUpdate} onNavigate={setActiveModule} />

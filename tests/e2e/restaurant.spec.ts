@@ -127,3 +127,15 @@ test('staff roles navigate and complete a restaurant order', async ({ page }) =>
   await expect(page.getByText('Portal del Cliente', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Gestión de Usuarios', exact: true })).toHaveCount(0);
 });
+
+test('mobile navigation opens and closes without horizontal overflow', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await signIn(page, email, 'Panel de Administración');
+  const fits = async () => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
+  expect(await fits()).toBeTruthy();
+  await page.getByRole('button', { name: 'Abrir o cerrar menú' }).click();
+  await page.getByRole('button', { name: 'Inventario', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Gestión de Inventario', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Inventario', exact: true })).toHaveCount(0);
+  expect(await fits()).toBeTruthy();
+});

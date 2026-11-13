@@ -132,22 +132,25 @@ export function SecureLogin({ onLogin, onPasswordReset }: SecureLoginProps) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white p-4">
-      <div className="w-full max-w-md">
+    <div className="sirest-auth">
+      <aside className="sirest-auth-hero" aria-label="Presentación de SIREST">
+        <div className="sirest-auth-brand"><span className="sirest-brand-mark"><Utensils className="h-6 w-6" /></span><span>SIREST <small>V2</small></span></div>
+        <div className="sirest-auth-story"><span className="sirest-eyebrow">OPERACIÓN RESTAURANTERA</span><h2>Tu restaurante,<br />en un solo lugar.</h2><p>Coordina pedidos, cocina, inventario y caja desde un espacio de trabajo conectado.</p><div className="sirest-auth-features"><span><CheckCircle2 /> Gestión de mesas y pedidos</span><span><CheckCircle2 /> Inventario y ventas</span><span><CheckCircle2 /> Acceso por roles</span></div></div>
+        <div className="sirest-auth-hero-foot">SIREST · Sistema integral de gestión</div>
+      </aside>
+      <div className="sirest-auth-form">
+        <div className="sirest-auth-panel">
         {/* Logo y Título */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-[#0B2240] to-[#5B2C90] rounded-2xl shadow-2xl mb-4">
-            <Utensils className="h-10 w-10 text-white" />
+        <div className="sirest-auth-heading">
+          <div className="sirest-auth-mobile-mark">
+            <Utensils className="h-6 w-6" />
           </div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-[#0B2240] to-[#5B2C90] bg-clip-text text-transparent mb-2">SIREST</h1>
-          <Badge variant="outline" className="bg-[#F28C1B] text-white border-[#F28C1B] px-4 py-1">
-            <Building2 className="h-3 w-3 mr-2" />
-            Globatech S.A.S
-          </Badge>
+          <h1 className="sirest-auth-title">Bienvenido a SIREST</h1>
+          <p>Accede a tu espacio de trabajo.</p>
         </div>
 
-        <Card className="shadow-2xl border-2 border-gray-100">
-          <CardHeader className="space-y-1 pb-4 bg-gradient-to-br from-gray-50 to-white">
+        <Card className="sirest-login-card">
+          <CardHeader className="sirest-login-card-header">
             <div className="flex items-center justify-center space-x-2 mb-2">
               <Shield className="h-5 w-5 text-[#0B2240]" />
               <CardTitle className="text-2xl text-center text-[#0B2240]">Sistema de Gestión</CardTitle>
@@ -157,7 +160,7 @@ export function SecureLogin({ onLogin, onPasswordReset }: SecureLoginProps) {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <Tabs value={activeTab} onValueChange={(value) => { setActiveTab(value); setError(""); setSuccess(""); setShowPassword(false); }} className="w-full">
               <TabsList className="grid w-full grid-cols-2 mb-6">
                 <TabsTrigger value="login" className="flex items-center gap-2">
                   <LogIn className="h-4 w-4" />
@@ -190,7 +193,7 @@ export function SecureLogin({ onLogin, onPasswordReset }: SecureLoginProps) {
                   <div className="space-y-2">
                     <Label htmlFor="login-email" className="text-[#0B2240]">Correo Electrónico</Label>
                     <Input
-                      id="login-email"
+                      id="login-email" autoComplete="email" required
                       type="email"
                       placeholder="usuario@ejemplo.com"
                       value={email}
@@ -204,7 +207,7 @@ export function SecureLogin({ onLogin, onPasswordReset }: SecureLoginProps) {
                     <Label htmlFor="login-password" className="text-[#0B2240]">Contraseña</Label>
                     <div className="relative">
                       <Input
-                        id="login-password"
+                        id="login-password" autoComplete="current-password" required
                         type={showPassword ? "text" : "password"}
                         placeholder="••••••••"
                         value={password}
@@ -214,6 +217,7 @@ export function SecureLogin({ onLogin, onPasswordReset }: SecureLoginProps) {
                       />
                       <button
                         type="button"
+                        aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                         onClick={() => setShowPassword(!showPassword)}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#5B2C90]"
                       >
@@ -271,7 +275,7 @@ export function SecureLogin({ onLogin, onPasswordReset }: SecureLoginProps) {
                   <div className="space-y-2">
                     <Label htmlFor="signup-name" className="text-[#0B2240]">Nombre Completo</Label>
                     <Input
-                      id="signup-name"
+                      id="signup-name" autoComplete="name" required
                       type="text"
                       placeholder="Juan Pérez"
                       value={name}
@@ -284,7 +288,7 @@ export function SecureLogin({ onLogin, onPasswordReset }: SecureLoginProps) {
                   <div className="space-y-2">
                     <Label htmlFor="signup-email" className="text-[#0B2240]">Correo Electrónico</Label>
                     <Input
-                      id="signup-email"
+                      id="signup-email" autoComplete="email" required
                       type="email"
                       placeholder="usuario@ejemplo.com"
                       value={email}
@@ -298,7 +302,7 @@ export function SecureLogin({ onLogin, onPasswordReset }: SecureLoginProps) {
                     <Label htmlFor="signup-password" className="text-[#0B2240]">Contraseña</Label>
                     <div className="relative">
                       <Input
-                        id="signup-password"
+                        id="signup-password" autoComplete="new-password" required
                         type={showPassword ? "text" : "password"}
                         placeholder="Mínimo 6 caracteres"
                         value={password}
@@ -308,6 +312,7 @@ export function SecureLogin({ onLogin, onPasswordReset }: SecureLoginProps) {
                       />
                       <button
                         type="button"
+                        aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                         onClick={() => setShowPassword(!showPassword)}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#5B2C90]"
                       >
@@ -351,7 +356,7 @@ export function SecureLogin({ onLogin, onPasswordReset }: SecureLoginProps) {
             <div className="mt-6 pt-6 border-t border-gray-200 space-y-3">
               <div className="flex items-center justify-center space-x-2 text-xs text-gray-600">
                 <Shield className="h-3 w-3 text-[#5B2C90]" />
-                <span>Autenticación segura con encriptación SSL</span>
+                <span>Acceso mediante Supabase Auth</span>
               </div>
             </div>
           </CardContent>
@@ -360,6 +365,7 @@ export function SecureLogin({ onLogin, onPasswordReset }: SecureLoginProps) {
         <p className="text-center text-gray-600 text-sm mt-6">
           Sistema de Gestión de Restaurante • <span className="font-bold bg-gradient-to-r from-[#0B2240] to-[#5B2C90] bg-clip-text text-transparent">SIREST v2.0</span>
         </p>
+        </div>
       </div>
     </div>
   );

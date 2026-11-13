@@ -428,8 +428,8 @@ export function AdminDashboard({ onNavigate, accessToken }: { onNavigate?: (modu
       </div>
 
       {/* KPIs principales */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-[#0B2240] to-[#1a3a5f] text-white">
+      <div className="sirest-kpi-grid">
+        <Card className="sirest-kpi sirest-kpi-blue">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium opacity-90">Ventas Hoy</CardTitle>
             <DollarSign className="h-5 w-5 opacity-90" />
@@ -443,7 +443,7 @@ export function AdminDashboard({ onNavigate, accessToken }: { onNavigate?: (modu
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-[#5B2C90] to-[#7a3fb8] text-white">
+        <Card className="sirest-kpi sirest-kpi-purple">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium opacity-90">Pedidos Activos</CardTitle>
             <Clock className="h-5 w-5 opacity-90" />
@@ -456,7 +456,7 @@ export function AdminDashboard({ onNavigate, accessToken }: { onNavigate?: (modu
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-[#F28C1B] to-[#f5a047] text-white">
+        <Card className="sirest-kpi sirest-kpi-amber">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium opacity-90">Ocupación Mesas</CardTitle>
             <Users className="h-5 w-5 opacity-90" />
@@ -471,7 +471,7 @@ export function AdminDashboard({ onNavigate, accessToken }: { onNavigate?: (modu
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-[#FFD23F] to-[#ffe066] text-[#0B2240]">
+        <Card className="sirest-kpi sirest-kpi-stock">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Stock Crítico</CardTitle>
             <AlertTriangle className="h-5 w-5" />
