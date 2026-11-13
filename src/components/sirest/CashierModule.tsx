@@ -347,7 +347,8 @@ export function CashierModule({ activeTab, accessToken }: CashierModuleProps) {
                       className={`cursor-pointer transition-all hover:shadow-lg border-2 ${
                         selectedOrder?.id === order.id ? "border-blue-500 bg-blue-50" : "border-gray-200"
                       }`}
-                      onClick={() => setSelectedOrder(order)}
+                      data-order-id={order.id}
+                      onClick={() => { if (selectedOrder?.id !== order.id) resetForm(); setSelectedOrder(order); }}
                     >
                       <CardContent className="p-4">
                         <div className="flex justify-between items-start mb-3">
@@ -573,7 +574,7 @@ export function CashierModule({ activeTab, accessToken }: CashierModuleProps) {
                 <div>
                   <CardTitle className="text-xl text-[#5B2C90]">📄 Facturas Pagadas</CardTitle>
                   <CardDescription>
-                    Visualiza, imprime y descarga facturas electrónicas
+                    Consulta, imprime y descarga comprobantes internos de pago
                   </CardDescription>
                 </div>
                 <div className="relative">
@@ -621,7 +622,7 @@ export function CashierModule({ activeTab, accessToken }: CashierModuleProps) {
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center space-x-2 flex-wrap">
                                     <h3 className="font-semibold text-[#0B2240]">
-                                      Factura #{payment.id.slice(0, 8).toUpperCase()}
+                                      Factura #{payment.id.replace(/^payment:/, "").slice(0, 8).toUpperCase()}
                                     </h3>
                                     <Badge className="bg-green-100 text-green-800 border-green-300">
                                       <CheckCircle className="h-3 w-3 mr-1" />
@@ -670,7 +671,7 @@ export function CashierModule({ activeTab, accessToken }: CashierModuleProps) {
                                       const relatedOrder = orders.find((o: any) => o.id === payment.orderId);
                                       const waiter = users.find((u: any) => u.id === relatedOrder?.createdBy);
                                       const doc = generateInvoice({
-                                        invoiceNumber: `INV-${payment.id.slice(0, 8).toUpperCase()}`,
+                                        invoiceNumber: `INV-${payment.id.replace(/^payment:/, "").slice(0, 8).toUpperCase()}`,
                                         date: new Date(payment.createdAt).toLocaleDateString('es-CO'),
                                         customerName: payment.customerName,
                                         customerPhone: payment.customerPhone,
@@ -690,7 +691,7 @@ export function CashierModule({ activeTab, accessToken }: CashierModuleProps) {
                                         total: payment.total || 0,
                                         paymentMethod: payment.paymentMethod
                                       });
-                                      doc.save(`factura-INV-${payment.id.slice(0, 8).toUpperCase()}.pdf`);
+                                      doc.save(`factura-INV-${payment.id.replace(/^payment:/, "").slice(0, 8).toUpperCase()}.pdf`);
                                       toast.success('✅ Factura descargada como PDF');
                                     }}
                                   >
@@ -973,7 +974,7 @@ export function CashierModule({ activeTab, accessToken }: CashierModuleProps) {
                         <div>
                           <p className="text-xs text-gray-500 uppercase tracking-wide">No. Factura</p>
                           <p className="font-bold text-lg text-[#0B2240]">
-                            INV-{selectedInvoice.id.slice(0, 8).toUpperCase()}
+                            INV-{selectedInvoice.id.replace(/^payment:/, "").slice(0, 8).toUpperCase()}
                           </p>
                         </div>
                         <div>
@@ -1147,7 +1148,7 @@ export function CashierModule({ activeTab, accessToken }: CashierModuleProps) {
                     className="border-[#F28C1B] text-[#F28C1B] hover:bg-[#F28C1B] hover:text-white transition-all"
                     onClick={() => {
                       const doc = generateInvoice({
-                        invoiceNumber: `INV-${selectedInvoice.id.slice(0, 8).toUpperCase()}`,
+                        invoiceNumber: `INV-${selectedInvoice.id.replace(/^payment:/, "").slice(0, 8).toUpperCase()}`,
                         date: new Date(selectedInvoice.createdAt).toLocaleDateString('es-CO'),
                         customerName: selectedInvoice.customerName,
                         customerPhone: selectedInvoice.customerPhone,
@@ -1167,7 +1168,7 @@ export function CashierModule({ activeTab, accessToken }: CashierModuleProps) {
                         total: selectedInvoice.total || 0,
                         paymentMethod: selectedInvoice.paymentMethod
                       });
-                      doc.save(`factura-INV-${selectedInvoice.id.slice(0, 8).toUpperCase()}.pdf`);
+                      doc.save(`factura-INV-${selectedInvoice.id.replace(/^payment:/, "").slice(0, 8).toUpperCase()}.pdf`);
                       toast.success('✅ Factura descargada como PDF');
                     }}
                   >
@@ -1191,7 +1192,7 @@ export function CashierModule({ activeTab, accessToken }: CashierModuleProps) {
                     onClick={async () => {
                       try {
                         const doc = generateInvoice({
-                          invoiceNumber: `INV-${selectedInvoice.id.slice(0, 8).toUpperCase()}`,
+                          invoiceNumber: `INV-${selectedInvoice.id.replace(/^payment:/, "").slice(0, 8).toUpperCase()}`,
                           date: new Date(selectedInvoice.createdAt).toLocaleDateString('es-CO'),
                           customerName: selectedInvoice.customerName,
                           customerPhone: selectedInvoice.customerPhone,
@@ -1213,13 +1214,13 @@ export function CashierModule({ activeTab, accessToken }: CashierModuleProps) {
                         });
                         
                         const pdfBlob = doc.output('blob');
-                        const file = new File([pdfBlob], `factura-${selectedInvoice.id.slice(0, 8)}.pdf`, { type: 'application/pdf' });
+                        const file = new File([pdfBlob], `factura-${selectedInvoice.id.replace(/^payment:/, "").slice(0, 8)}.pdf`, { type: 'application/pdf' });
                         
                         if (navigator.share && navigator.canShare({ files: [file] })) {
                           await navigator.share({
                             files: [file],
                             title: 'Factura SIREST',
-                            text: `Factura #INV-${selectedInvoice.id.slice(0, 8).toUpperCase()}`
+                            text: `Factura #INV-${selectedInvoice.id.replace(/^payment:/, "").slice(0, 8).toUpperCase()}`
                           });
                           toast.success('✅ Factura compartida');
                         } else {
@@ -1239,7 +1240,7 @@ export function CashierModule({ activeTab, accessToken }: CashierModuleProps) {
                 {/* Footer */}
                 <div className="bg-gradient-to-r from-[#5B2C90] to-[#0B2240] p-4 rounded-lg text-center text-white">
                   <p className="font-semibold">¡Gracias por su preferencia!</p>
-                  <p className="text-xs mt-1 opacity-75">Esta factura fue generada electrónicamente por SIREST</p>
+                  <p className="text-xs mt-1 opacity-75">Comprobante interno de SIREST. No constituye factura electrónica fiscal.</p>
                   <p className="text-xs opacity-75">Sistema de Gestión de Restaurante - Globatech S.A.S.</p>
                 </div>
               </div>
