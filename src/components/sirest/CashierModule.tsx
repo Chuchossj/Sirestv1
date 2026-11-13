@@ -118,6 +118,7 @@ export function CashierModule({ activeTab, accessToken }: CashierModuleProps) {
 
     try {
       const totals = calculateTotals(selectedOrder);
+      if (paymentMethod === "efectivo" && Number(receivedAmount) < totals.total) { toast.error("Efectivo insuficiente"); return; }
       
       // Buscar el mesero que creó la orden
       const waiter = users.find((u: any) => u.id === selectedOrder.createdBy);
@@ -154,7 +155,7 @@ export function CashierModule({ activeTab, accessToken }: CashierModuleProps) {
       }
     } catch (error) {
       console.error("Error procesando pago:", error);
-      toast.error("Error al procesar el pago");
+      toast.error(error instanceof Error ? error.message : "Error al procesar el pago");
     }
   };
 
