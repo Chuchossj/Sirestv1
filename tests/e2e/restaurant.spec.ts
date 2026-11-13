@@ -135,6 +135,24 @@ test('staff roles navigate and complete a restaurant order', async ({ page }) =>
   expect(await page.evaluate(() => (window as any).__receiptText)).toContain('Método: efectivo');
   expect(await page.evaluate(() => (window as any).__receiptText)).toContain(menuName);
   await page.getByRole('dialog').getByRole('button', { name: 'Cerrar', exact: true }).click();
+  // A second confirmed order exercises the card receipt and historical reprint.
+  const cardOrderId = 'order:card-e2e-' + tag;
+  const cardFixture = await db.from(table).insert({
+    key: cardOrderId,
+    value: { id: cardOrderId, tableId, tableNumber: '88', status: 'served', createdBy: 'qa', createdAt: new Date().toISOString(), subtotal: 25000, total: 25000, items: [{ productId: menuId, name: menuName, quantity: 1, price: 25000 }] }
+  });
+  if (cardFixture.error) throw cardFixture.error;
+  await page.getByRole('heading', { name: 'Mesa #88', exact: true }).click();
+  await page.getByRole('button', { name: 'Tarjeta', exact: true }).click();
+  await page.getByRole('button', { name: /Procesar Pago -/ }).click();
+  await expect(page.getByRole('dialog').getByText(/Pago Procesado/)).toBeVisible();
+  await page.getByRole('dialog').getByRole('button', { name: 'Imprimir', exact: true }).click();
+  expect(await page.evaluate(() => (window as any).__receiptText)).toContain('Método: tarjeta');
+  expect(await page.evaluate(() => (window as any).__receiptText)).toContain(menuName);
+  await page.getByRole('dialog').getByRole('button', { name: 'Cerrar', exact: true }).click();
+  const cardPayments = await db.from(table).select('value').like('key', 'payment:%');
+  if (cardPayments.error) throw cardPayments.error;
+  expect(cardPayments.data.filter(row => row.value.orderId === cardOrderId)).toHaveLength(1);
   await logout();
   await page.goto('/');
   await page.locator('#login-email').fill(roleEmail('cliente'));
