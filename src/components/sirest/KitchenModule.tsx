@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -67,7 +67,8 @@ export function KitchenModule({ activeTab, accessToken }: KitchenModuleProps) {
   const getAverageWaitTime = () => {
     const completedOrders = orders.filter((order: any) => order.status === "ready" || order.status === "served");
     if (completedOrders.length === 0) return 0;
-    return Math.round(completedOrders.length * 15); // Estimación simple
+    const durations = completedOrders.filter(o => o.readyAt && o.createdAt).map(o => (new Date(o.readyAt).getTime() - new Date(o.createdAt).getTime()) / 60000).filter(n => Number.isFinite(n) && n >= 0);
+    return durations.length ? Math.round(durations.reduce((sum, n) => sum + n, 0) / durations.length) : 0;
   };
 
   const getUrgentOrders = () => {
@@ -104,6 +105,7 @@ export function KitchenModule({ activeTab, accessToken }: KitchenModuleProps) {
   };
   
   const [activeInternalTab, setActiveInternalTab] = useState(getDefaultTab());
+  useEffect(() => { setActiveInternalTab(getDefaultTab()); }, [activeTab]);
 
   const priorityColors = {
     normal: "bg-gray-100 text-gray-800",
@@ -129,7 +131,7 @@ export function KitchenModule({ activeTab, accessToken }: KitchenModuleProps) {
             Cocina Operativa
           </Badge>
           <Badge className="bg-orange-100 text-orange-800 border-orange-300">
-            Turno: 11:00 - 22:00
+            Pedidos en tiempo real
           </Badge>
         </div>
       </div>

@@ -203,6 +203,7 @@ export function WaiterModule({ activeTab, accessToken }: WaiterModuleProps) {
   };
   
   const [activeInternalTab, setActiveInternalTab] = useState(getDefaultTab());
+  useEffect(() => { setActiveInternalTab(getDefaultTab()); }, [activeTab]);
 
   return (
     <div className="sirest-role-panel sirest-waiter space-y-6">

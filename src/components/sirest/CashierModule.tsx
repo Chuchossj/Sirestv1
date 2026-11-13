@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -226,6 +226,7 @@ export function CashierModule({ activeTab, accessToken }: CashierModuleProps) {
   };
   
   const [activeInternalTab, setActiveInternalTab] = useState(getDefaultTab());
+  useEffect(() => { setActiveInternalTab(getDefaultTab()); }, [activeTab]);
 
   return (
     <div className="sirest-role-panel sirest-cashier space-y-8">
@@ -245,7 +246,7 @@ export function CashierModule({ activeTab, accessToken }: CashierModuleProps) {
             Caja Operativa
           </Badge>
           <Badge className="bg-orange-100 text-orange-800 border-orange-300">
-            Turno: 09:00 - 17:00
+            Operaciones del día
           </Badge>
         </div>
       </div>
