@@ -4,6 +4,9 @@ on:
   workflow_dispatch:
   push:
     branches: ["recovery/sirest-supabase", "v2"]
+concurrency:
+  group: sirest-qa-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
