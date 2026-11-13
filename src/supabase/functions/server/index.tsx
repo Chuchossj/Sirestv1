@@ -403,6 +403,24 @@ app.put("/make-server-71783a73/configuration", async (c) => {
 
 // ==================== PRODUCTOS/INVENTARIO ====================
 
+async function restaurantOperation(c: any, action: string, payload: any, responseKey: string) {
+  const token = c.req.header("Authorization")?.split(" ")[1];
+  const { data, error } = await supabase.auth.getUser(token);
+  if (error || !data.user) return c.json({ error: "Unauthorized" }, 401);
+  const profile = await kv.get("user_profile:" + data.user.id);
+  if (!profile || profile.active === false) return c.json({ error: "Acceso no autorizado" }, 403);
+  if (action === "order_create" && profile.role === "cliente") {
+    payload = { ...payload, customerEmail: data.user.email, customerName: profile.name };
+  }
+  const result = await supabase.rpc("sirest_operation", { action, payload, actor: data.user.id, actor_role: profile.role });
+  if (result.error) {
+    const status = result.error.code === "P0002" ? 404 : result.error.code === "P0001" ? 409 : result.error.code === "22023" ? 400 : 500;
+    if (status === 500) console.error("Restaurant operation failed", result.error.code);
+    return c.json({ error: status === 500 ? "Error interno" : result.error.message }, status);
+  }
+  return c.json({ success: true, [responseKey]: result.data });
+}
+
 app.get("/make-server-71783a73/products", async (c) => {
   try {
     const products = await retryOperation(() => kv.getByPrefix("product:"), 3, 500) || [];
@@ -415,82 +433,25 @@ app.get("/make-server-71783a73/products", async (c) => {
 
 app.post("/make-server-71783a73/products", async (c) => {
   try {
-    const token = c.req.header("Authorization")?.split(" ")[1];
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-
-    if (!user?.id) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
-
-    const product = await c.req.json();
-    const productId = `product:${Date.now()}`;
-    
-    const newProduct = {
-      ...product,
-      id: productId,
-      createdAt: new Date().toISOString(),
-      createdBy: user.id
-    };
-
-    await kv.set(productId, newProduct);
-
-    return c.json({ success: true, product: newProduct });
+    return await restaurantOperation(c, "product_save", { ...(await c.req.json()), id: "product:" + crypto.randomUUID(), mode: "create" }, "product");
   } catch (error) {
-    console.error("Error creando producto:", error);
-    return c.json({ error: error.message }, 500);
+    return c.json({ error: "Solicitud inválida" }, 400);
   }
 });
 
 app.put("/make-server-71783a73/products/:id", async (c) => {
   try {
-    const token = c.req.header("Authorization")?.split(" ")[1];
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-
-    if (!user?.id) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
-
-    const productId = c.req.param("id");
-    const updates = await c.req.json();
-    
-    const currentProduct = await kv.get(productId);
-    if (!currentProduct) {
-      return c.json({ error: "Producto no encontrado" }, 404);
-    }
-
-    const updatedProduct = {
-      ...currentProduct,
-      ...updates,
-      id: productId,
-      updatedAt: new Date().toISOString(),
-      updatedBy: user.id
-    };
-
-    await kv.set(productId, updatedProduct);
-
-    return c.json({ success: true, product: updatedProduct });
+    return await restaurantOperation(c, "product_save", { ...(await c.req.json()), id: c.req.param("id"), mode: "update" }, "product");
   } catch (error) {
-    console.error("Error actualizando producto:", error);
-    return c.json({ error: error.message }, 500);
+    return c.json({ error: "Solicitud inválida" }, 400);
   }
 });
 
 app.delete("/make-server-71783a73/products/:id", async (c) => {
   try {
-    const token = c.req.header("Authorization")?.split(" ")[1];
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-
-    if (!user?.id) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
-
-    const productId = c.req.param("id");
-    await kv.del(productId);
-
-    return c.json({ success: true });
+    return await restaurantOperation(c, "product_delete", { id: c.req.param("id") }, "product");
   } catch (error) {
-    console.error("Error eliminando producto:", error);
-    return c.json({ error: error.message }, 500);
+    return c.json({ error: "Solicitud inválida" }, 400);
   }
 });
 
@@ -508,32 +469,9 @@ app.get("/make-server-71783a73/tables", async (c) => {
 
 app.put("/make-server-71783a73/tables/:id", async (c) => {
   try {
-    const token = c.req.header("Authorization")?.split(" ")[1];
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-
-    if (!user?.id) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
-
-    const tableId = c.req.param("id");
-    const updates = await c.req.json();
-    
-    const currentTable = await kv.get(tableId) || {};
-
-    const updatedTable = {
-      ...currentTable,
-      ...updates,
-      id: tableId,
-      updatedAt: new Date().toISOString(),
-      updatedBy: user.id
-    };
-
-    await kv.set(tableId, updatedTable);
-
-    return c.json({ success: true, table: updatedTable });
+    return await restaurantOperation(c, "table_update", { ...(await c.req.json()), id: c.req.param("id") }, "table");
   } catch (error) {
-    console.error("Error actualizando mesa:", error);
-    return c.json({ error: error.message }, 500);
+    return c.json({ error: "Solicitud inválida" }, 400);
   }
 });
 
@@ -554,109 +492,17 @@ app.get("/make-server-71783a73/orders", async (c) => {
 
 app.post("/make-server-71783a73/orders", async (c) => {
   try {
-    const authHeader = c.req.header("Authorization");
-    
-    
-    const token = authHeader?.split(" ")[1];
-    console.log("Token extracted:", token ? "Present" : "Missing");
-    
-    if (!token) {
-      console.error("No token provided in Authorization header");
-      return c.json({ error: "Unauthorized - No token provided" }, 401);
-    }
-
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    
-    if (error) {
-      console.error("Error validating token:", error);
-      return c.json({ error: `Unauthorized - ${error.message}` }, 401);
-    }
-
-    if (!user?.id) {
-      console.error("No user found for token");
-      return c.json({ error: "Unauthorized - Invalid user" }, 401);
-    }
-
-    
-
-    const order = await c.req.json();
-    const profile = await kv.get(`user_profile:${user.id}`);
-    if (profile.role === "cliente") { order.customerId = user.id; order.customerEmail = user.email; order.status = "pending"; }
-    const orderId = `order:${Date.now()}`;
-    
-    const newOrder = {
-      ...order,
-      id: orderId,
-      createdAt: new Date().toISOString(),
-      createdBy: user.id,
-      status: order.status || "pending"
-    };
-
-    await kv.set(orderId, newOrder);
-
-    // Crear alerta para nuevo pedido
-    const alertId = `alert:${Date.now()}`;
-    await kv.set(alertId, {
-      id: alertId,
-      type: "new_order",
-      message: `Nuevo pedido para Mesa ${order.tableNumber}`,
-      orderId: orderId,
-      createdAt: new Date().toISOString(),
-      read: false
-    });
-
-    console.log("Order created successfully:", orderId);
-    return c.json({ success: true, order: newOrder });
+    return await restaurantOperation(c, "order_create", await c.req.json(), "order");
   } catch (error) {
-    console.error("Error creando pedido:", error);
-    return c.json({ error: error.message }, 500);
+    return c.json({ error: "Solicitud inválida" }, 400);
   }
 });
 
 app.put("/make-server-71783a73/orders/:id", async (c) => {
   try {
-    const token = c.req.header("Authorization")?.split(" ")[1];
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-
-    if (!user?.id) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
-
-    const orderId = c.req.param("id");
-    const updates = await c.req.json();
-    
-    const currentOrder = await kv.get(orderId);
-    if (!currentOrder) {
-      return c.json({ error: "Pedido no encontrado" }, 404);
-    }
-
-    const updatedOrder = {
-      ...currentOrder,
-      ...updates,
-      id: orderId,
-      updatedAt: new Date().toISOString(),
-      updatedBy: user.id
-    };
-
-    await kv.set(orderId, updatedOrder);
-
-    // Crear alerta si el pedido está listo
-    if (updates.status === "ready" && currentOrder.status !== "ready") {
-      const alertId = `alert:${Date.now()}`;
-      await kv.set(alertId, {
-        id: alertId,
-        type: "order_ready",
-        message: `Pedido listo para Mesa ${updatedOrder.tableNumber}`,
-        orderId: orderId,
-        createdAt: new Date().toISOString(),
-        read: false
-      });
-    }
-
-    return c.json({ success: true, order: updatedOrder });
+    return await restaurantOperation(c, "order_status", { ...(await c.req.json()), id: c.req.param("id") }, "order");
   } catch (error) {
-    console.error("Error actualizando pedido:", error);
-    return c.json({ error: error.message }, 500);
+    return c.json({ error: "Solicitud inválida" }, 400);
   }
 });
 
@@ -693,39 +539,9 @@ app.put("/make-server-71783a73/alerts/:id/read", async (c) => {
 
 app.post("/make-server-71783a73/payments", async (c) => {
   try {
-    const token = c.req.header("Authorization")?.split(" ")[1];
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-
-    if (!user?.id) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
-
-    const payment = await c.req.json();
-    if (typeof payment.orderId !== "string" || !payment.orderId.startsWith("order:")) return c.json({ error: "Pedido inválido" }, 400);
-    const paymentId = `payment:${Date.now()}`;
-    
-    const newPayment = {
-      ...payment,
-      id: paymentId,
-      createdAt: new Date().toISOString(),
-      createdBy: user.id,
-      status: "completed"
-    };
-
-    await kv.set(paymentId, newPayment);
-
-    // Actualizar el pedido a pagado
-    if (payment.orderId) {
-      const order = await kv.get(payment.orderId);
-      if (order) {
-        await kv.set(payment.orderId, { ...order, status: "paid", paidAt: new Date().toISOString() });
-      }
-    }
-
-    return c.json({ success: true, payment: newPayment });
+    return await restaurantOperation(c, "payment_create", await c.req.json(), "payment");
   } catch (error) {
-    console.error("Error procesando pago:", error);
-    return c.json({ error: error.message }, 500);
+    return c.json({ error: "Solicitud inválida" }, 400);
   }
 });
 
@@ -755,8 +571,8 @@ app.post("/make-server-71783a73/cash-closing", async (c) => {
     
     const payments = await retryOperation(() => kv.getByPrefix("payment:"), 3, 500) || [];
     const todayPayments = payments.filter(p => {
-      const paymentDate = new Date(p.createdAt).toDateString();
-      return paymentDate === new Date().toDateString();
+      const day = (date: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota", year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
+      return p.status === "completed" && day(new Date(p.createdAt)) === day(new Date());
     });
 
     const totalSales = todayPayments.reduce((sum, p) => sum + (p.total || 0), 0);
@@ -817,9 +633,9 @@ app.get("/make-server-71783a73/staff-status", async (c) => {
         id: s.id,
         name: s.name,
         role: s.role,
-        status: "activo", // En producción esto vendría de un sistema de asistencia
-        shift: s.role === "cocinero" ? "11:00 - 22:00" : s.role === "mesero" ? "10:00 - 20:00" : "09:00 - 17:00",
-        performance: Math.floor(Math.random() * 30) + 70 // Simulado
+        status: s.active === false ? "inactivo" : "activo",
+        shift: "No registrado",
+        performance: null
       };
       return statusData;
     });
