@@ -34,6 +34,7 @@ jobs:
           revoke all on table public.kv_store_71783a73 from anon, authenticated, public;
           grant select, insert, update, delete on table public.kv_store_71783a73 to service_role;
           SQL
+          cp src/supabase/migrations/*.sql supabase/migrations/
           supabase start
           supabase status -o env > /tmp/sirest-local.env
       - name: Run automated restaurant flow
