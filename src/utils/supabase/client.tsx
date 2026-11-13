@@ -1,4 +1,4 @@
-import { createClient as createSupabaseClient } from "@jsr/supabase__supabase-js";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { projectId, publicAnonKey } from "./info";
 
 let supabaseClient: ReturnType<typeof createSupabaseClient> | null = null;
