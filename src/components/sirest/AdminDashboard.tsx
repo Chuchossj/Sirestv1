@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
 import { useState, useEffect, useMemo } from "react";
-import { projectId, publicAnonKey } from "../../utils/supabase/info";
+import { supabaseUrl, publicAnonKey } from "../../utils/supabase/info";
 import { toast } from "sonner@2.0.3";
 import { useRealtimeData } from "../../utils/useRealtimeData";
 import { generateInvoice } from "../../utils/pdfGenerator";
@@ -293,7 +293,7 @@ export function AdminDashboard({ onNavigate, accessToken }: { onNavigate?: (modu
 
   const saveSchedule = async () => {
     try {
-      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-71783a73/configuration`, {
+      const response = await fetch(`${supabaseUrl}/functions/v1/make-server-71783a73/configuration`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
