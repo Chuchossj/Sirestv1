@@ -284,13 +284,13 @@ function MainContent({
       case "administrador":
         switch (activeModule) {
           case "dashboard":
-            return <AdminDashboard onNavigate={onNavigate} />;
+            return <AdminDashboard onNavigate={onNavigate} accessToken={userSession.accessToken} />;
           case "users":
             return <UserManagement accessToken={userSession.accessToken} />;
           case "inventory":
             return <InventoryManagement accessToken={userSession.accessToken} />;
           case "reports":
-            return <ReportsAndAnalytics />;
+            return <ReportsAndAnalytics accessToken={userSession.accessToken} />;
           case "alerts-view":
             return <AdminSupervisionView module="alerts" accessToken={userSession.accessToken} />; // Centro de alertas
           case "staff-view":
@@ -302,7 +302,7 @@ function MainContent({
           case "tables-view":
             return <AdminSupervisionView module="tables" accessToken={userSession.accessToken} />; // Vista de supervisión de mesas
           default:
-            return <AdminDashboard onNavigate={onNavigate} />;
+            return <AdminDashboard onNavigate={onNavigate} accessToken={userSession.accessToken} />;
         }
       
       case "mesero":
@@ -357,38 +357,6 @@ export default function App() {
   const [activeModule, setActiveModule] = useState("dashboard");
   const [notifications, setNotifications] = useState<Array<{id: string, message: string, type: 'success' | 'info' | 'warning'}>>([]);
   const [showPasswordReset, setShowPasswordReset] = useState(false);
-  const [isInitialized, setIsInitialized] = useState(false);
-
-  // Inicializar datos de ejemplo al cargar la aplicación
-  useEffect(() => {
-    const initializeData = async () => {
-      if (!isInitialized) {
-        try {
-          const { projectId, publicAnonKey } = await import('./utils/supabase/info');
-          const response = await fetch(
-            `https://${projectId}.supabase.co/functions/v1/make-server-71783a73/init-demo-data`,
-            {
-              method: "POST",
-              headers: {
-                "Authorization": `Bearer ${publicAnonKey}`,
-                "Content-Type": "application/json"
-              }
-            }
-          );
-          
-          if (response.ok) {
-            console.log("Datos inicializados correctamente");
-            setIsInitialized(true);
-          }
-        } catch (error) {
-          console.error("Error al inicializar datos:", error);
-        }
-      }
-    };
-
-    initializeData();
-  }, []);
-
   const handleLogin = (role: string, username: string, userData: any, accessToken: string) => {
     setUserSession({ role, username, userData, accessToken });
     setActiveModule("dashboard");

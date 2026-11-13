@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
@@ -34,52 +34,6 @@ export function SecureLogin({ onLogin, onPasswordReset }: SecureLoginProps) {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [activeTab, setActiveTab] = useState("login");
-  const [isInitialized, setIsInitialized] = useState<boolean | null>(null);
-  const [initializingDemo, setInitializingDemo] = useState(false);
-  const [demoCredentials, setDemoCredentials] = useState<any>(null);
-
-  // Inicializar datos de demostración al cargar
-  useEffect(() => {
-    const initializeData = async () => {
-      try {
-        const result = await apiRequest("/init-demo-data", {
-          method: "POST",
-          body: {}
-        });
-        setIsInitialized(true);
-        if (result.credentials) {
-          setDemoCredentials(result.credentials);
-        }
-        console.log("Datos de demostración verificados:", result);
-      } catch (error) {
-        console.error("Error inicializando datos:", error);
-        setIsInitialized(false);
-      }
-    };
-
-    initializeData();
-  }, []);
-
-  const handleManualInit = async () => {
-    setInitializingDemo(true);
-    setError("");
-    try {
-      const result = await apiRequest("/init-demo-data", {
-        method: "POST",
-        body: {}
-      });
-      setIsInitialized(true);
-      if (result.credentials) {
-        setDemoCredentials(result.credentials);
-      }
-      setSuccess("✓ Datos demo creados exitosamente");
-    } catch (error) {
-      setError("Error al crear datos demo: " + (error instanceof Error ? error.message : "Error desconocido"));
-    } finally {
-      setInitializingDemo(false);
-    }
-  };
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -216,47 +170,7 @@ export function SecureLogin({ onLogin, onPasswordReset }: SecureLoginProps) {
               </TabsList>
 
               <TabsContent value="login">
-                {/* Mostrar credenciales demo si existen */}
-                {demoCredentials && (
-                  <Alert className="bg-blue-50 border-blue-200 mb-4">
-                    <CheckCircle2 className="h-4 w-4 text-blue-600" />
-                    <AlertDescription className="text-blue-800">
-                      <p className="font-semibold mb-2">Credenciales Demo:</p>
-                      <ul className="text-xs space-y-1">
-                        <li><strong>Admin:</strong> {demoCredentials.admin}</li>
-                        <li><strong>Mesero:</strong> {demoCredentials.mesero}</li>
-                        <li><strong>Cajero:</strong> {demoCredentials.cajero}</li>
-                        <li><strong>Cocinero:</strong> {demoCredentials.cocinero}</li>
-                      </ul>
-                    </AlertDescription>
-                  </Alert>
-                )}
 
-                {/* Botón para inicializar datos demo si no está inicializado */}
-                {isInitialized === false && (
-                  <Alert className="bg-yellow-50 border-yellow-200 mb-4">
-                    <AlertTriangle className="h-4 w-4 text-yellow-600" />
-                    <AlertDescription className="text-yellow-800">
-                      <p className="mb-2">No hay usuarios en el sistema.</p>
-                      <Button 
-                        type="button"
-                        onClick={handleManualInit}
-                        disabled={initializingDemo}
-                        className="w-full"
-                        style={{ backgroundColor: "#F28C1B" }}
-                      >
-                        {initializingDemo ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Creando datos demo...
-                          </>
-                        ) : (
-                          "Crear Usuarios Demo"
-                        )}
-                      </Button>
-                    </AlertDescription>
-                  </Alert>
-                )}
 
                 <form onSubmit={handleLogin} className="space-y-4">
                   {error && (

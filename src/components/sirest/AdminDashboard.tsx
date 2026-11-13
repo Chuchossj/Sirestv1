@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
 import { useState, useEffect, useMemo } from "react";
-import { projectId, publicAnonKey } from "../../utils/supabase/info";
+import { supabaseUrl, publicAnonKey } from "../../utils/supabase/info";
 import { toast } from "sonner@2.0.3";
 import { useRealtimeData } from "../../utils/useRealtimeData";
 import { generateInvoice } from "../../utils/pdfGenerator";
@@ -89,7 +89,7 @@ const performanceData = [
   { categoria: "Calidad", actual: 95, meta: 90, color: "#FFD23F" }
 ];
 
-export function AdminDashboard({ onNavigate }: { onNavigate?: (module: string) => void }) {
+export function AdminDashboard({ onNavigate, accessToken }: { onNavigate?: (module: string) => void; accessToken: string }) {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
   const [scheduleConfig, setScheduleConfig] = useState({
@@ -110,7 +110,7 @@ export function AdminDashboard({ onNavigate }: { onNavigate?: (module: string) =
   });
   const [quickActionDialog, setQuickActionDialog] = useState<string | null>(null);
 
-  const accessToken = localStorage.getItem('accessToken');
+
 
   // Usar hooks de tiempo real para todos los datos
   const { data: paymentsData } = useRealtimeData<{ success: boolean; payments: any[] }>({
@@ -293,7 +293,7 @@ export function AdminDashboard({ onNavigate }: { onNavigate?: (module: string) =
 
   const saveSchedule = async () => {
     try {
-      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-71783a73/configuration`, {
+      const response = await fetch(`${supabaseUrl}/functions/v1/make-server-71783a73/configuration`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${accessToken}`,

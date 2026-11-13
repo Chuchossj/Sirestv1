@@ -80,11 +80,11 @@ interface User {
   active: boolean;
 }
 
-export function ReportsAndAnalytics() {
+export function ReportsAndAnalytics({ accessToken }: { accessToken: string }) {
   const [selectedPeriod, setSelectedPeriod] = useState("today");
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
   const [showInvoiceViewer, setShowInvoiceViewer] = useState(false);
-  const accessToken = localStorage.getItem("accessToken");
+
 
   // Obtener datos en tiempo real
   const { data: productsData, loading: loadingProducts, refetch: refetchProducts } = useRealtimeData<{ success: boolean; products: Product[] }>({

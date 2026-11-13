@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { projectId, publicAnonKey } from "./supabase/info";
+import { supabaseUrl, publicAnonKey } from "./supabase/info";
 
 interface UseRealtimeDataOptions {
   endpoint: string;
@@ -26,7 +26,7 @@ export function useRealtimeData<T>(options: UseRealtimeDataOptions) {
       }
 
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-71783a73${endpoint}`,
+        `${supabaseUrl}/functions/v1/make-server-71783a73${endpoint}`,
         { headers }
       );
 
@@ -77,7 +77,7 @@ export async function apiRequest<T>(
   }
 
   const response = await fetch(
-    `https://${projectId}.supabase.co/functions/v1/make-server-71783a73${endpoint}`,
+    `${supabaseUrl}/functions/v1/make-server-71783a73${endpoint}`,
     {
       method,
       headers,

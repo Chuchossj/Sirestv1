@@ -1,7 +1,7 @@
-import { Hono } from "npm:hono";
-import { cors } from "npm:hono/cors";
-import { logger } from "npm:hono/logger";
-import { createClient } from "jsr:@supabase/supabase-js@2";
+import { Hono } from "npm:hono@4.7.11";
+import { cors } from "npm:hono@4.7.11/cors";
+import { logger } from "npm:hono@4.7.11/logger";
+import { createClient } from "jsr:@supabase/supabase-js@2.49.8";
 import * as kv from "./kv_store.tsx";
 
 const app = new Hono();
@@ -38,124 +38,39 @@ async function retryOperation<T>(
 // ==================== INICIALIZACIÓN DEL SISTEMA ====================
 
 // Endpoint para inicializar datos de prueba
-app.post("/make-server-71783a73/init-demo-data", async (c) => {
-  try {
-    console.log("Iniciando creación de datos demo...");
 
-    // Verificar si ya existen usuarios
-    const existingUsers = await retryOperation(() => kv.getByPrefix("user_profile:"), 3, 500);
-    if (existingUsers && existingUsers.length > 0) {
-      return c.json({ 
-        message: "El sistema ya tiene usuarios. No se crearon datos demo.",
-        usersCount: existingUsers.length 
-      });
-    }
-
-    // Crear usuarios demo
-    const demoUsers = [
-      { email: "admin@globatech.com", password: "admin123", name: "Administrador General", role: "administrador", phone: "+57 310 123 4567" },
-      { email: "mesero@globatech.com", password: "mesero123", name: "Carlos Rodríguez", role: "mesero", phone: "+57 311 234 5678" },
-      { email: "mesero2@globatech.com", password: "mesero123", name: "María Fernández", role: "mesero", phone: "+57 312 345 6789" },
-      { email: "cajero@globatech.com", password: "cajero123", name: "Ana Martínez", role: "cajero", phone: "+57 313 456 7890" },
-      { email: "cocinero@globatech.com", password: "cocinero123", name: "Luis García", role: "cocinero", phone: "+57 314 567 8901" },
-      { email: "cocinero2@globatech.com", password: "cocinero123", name: "Pedro Sánchez", role: "cocinero", phone: "+57 315 678 9012" },
-      { email: "cliente@globatech.com", password: "cliente123", name: "Cliente Demo", role: "cliente", phone: "+57 316 789 0123" }
-    ];
-
-    const createdUsers = [];
-    
-    for (const user of demoUsers) {
-      try {
-        // Crear usuario en Supabase Auth
-        const { data, error } = await supabase.auth.admin.createUser({
-          email: user.email,
-          password: user.password,
-          email_confirm: true,
-          user_metadata: { name: user.name, role: user.role }
-        });
-
-        if (error) {
-          console.error(`Error creando usuario ${user.email}:`, error);
-          continue;
-        }
-
-        // Guardar perfil en KV
-        const userProfile = {
-          id: data.user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-          createdAt: new Date().toISOString(),
-          phone: user.phone,
-          avatar: "",
-          active: true
-        };
-
-        await retryOperation(() => kv.set(`user_profile:${data.user.id}`, userProfile), 3, 500);
-        await retryOperation(() => kv.set(`user_by_email:${user.email}`, data.user.id), 3, 500);
-        
-        createdUsers.push({ email: user.email, name: user.name, role: user.role });
-        console.log(`Usuario creado: ${user.email}`);
-      } catch (err) {
-        console.error(`Error procesando usuario ${user.email}:`, err);
-      }
-    }
-
-    // Crear algunas categorías demo
-    const categories = [
-      { id: "cat:1", name: "Entradas", description: "Aperitivos y entradas", color: "#F28C1B", icon: "🍽️" },
-      { id: "cat:2", name: "Platos Principales", description: "Platos fuertes", color: "#5B2C90", icon: "🍖" },
-      { id: "cat:3", name: "Bebidas", description: "Bebidas frías y calientes", color: "#FFD23F", icon: "🥤" },
-      { id: "cat:4", name: "Postres", description: "Dulces y postres", color: "#0B2240", icon: "🍰" }
-    ];
-
-    for (const category of categories) {
-      await retryOperation(() => kv.set(`category:${category.id}`, category), 3, 500);
-    }
-
-    // Crear algunos productos demo
-    const products = [
-      { id: "prod:1", name: "Ensalada César", price: 15000, category: "cat:1", available: true },
-      { id: "prod:2", name: "Sopa de Tomate", price: 12000, category: "cat:1", available: true },
-      { id: "prod:3", name: "Pollo a la Plancha", price: 28000, category: "cat:2", available: true },
-      { id: "prod:4", name: "Pasta Carbonara", price: 25000, category: "cat:2", available: true },
-      { id: "prod:5", name: "Jugo Natural", price: 6000, category: "cat:3", available: true },
-      { id: "prod:6", name: "Café", price: 4000, category: "cat:3", available: true },
-      { id: "prod:7", name: "Tiramisú", price: 12000, category: "cat:4", available: true }
-    ];
-
-    for (const product of products) {
-      await retryOperation(() => kv.set(`product:${product.id}`, product), 3, 500);
-    }
-
-    // Crear mesas demo
-    for (let i = 1; i <= 10; i++) {
-      const table = {
-        id: `table:${i}`,
-        number: i,
-        capacity: i <= 5 ? 4 : 6,
-        status: "disponible",
-        location: i <= 5 ? "Terraza" : "Interior"
-      };
-      await retryOperation(() => kv.set(`table:${i}`, table), 3, 500);
-    }
-
-    return c.json({
-      success: true,
-      message: "Datos demo creados exitosamente",
-      users: createdUsers,
-      credentials: {
-        admin: "admin@globatech.com / admin123",
-        mesero: "mesero@globatech.com / mesero123",
-        cajero: "cajero@globatech.com / cajero123",
-        cocinero: "cocinero@globatech.com / cocinero123",
-        cliente: "cliente@globatech.com / cliente123"
-      }
-    });
-  } catch (error) {
-    console.error("Error creando datos demo:", error);
-    return c.json({ error: error.message }, 500);
-  }
+// Authorization is enforced on the server, not just in the UI.
+app.use("/make-server-71783a73/*", async (c, next) => {
+  const path = decodeURIComponent(c.req.path.replace("/make-server-71783a73", ""));
+  const method = c.req.method;
+  if (method === "OPTIONS" || path === "/health" || path === "/auth/login" || path === "/auth/signup") return next();
+  const token = c.req.header("Authorization")?.split(" ")[1];
+  if (!token) return c.json({ error: "Unauthorized" }, 401);
+  const { data, error } = await supabase.auth.getUser(token);
+  if (error || !data.user) return c.json({ error: "Unauthorized" }, 401);
+  const profile = await kv.get("user_profile:" + data.user.id);
+  if (!profile || profile.active === false) return c.json({ error: "Cuenta no autorizada" }, 403);
+  const role = profile.role;
+  const staff = ["administrador", "mesero", "cajero", "cocinero"];
+  let allowed = false;
+  if (["/auth/session", "/profile"].includes(path)) allowed = true;
+  else if (path === "/configuration") allowed = method === "GET" || role === "administrador";
+  else if (path === "/products" || path.startsWith("/products/")) allowed = method === "GET" || role === "administrador";
+  else if (path === "/users" || path.startsWith("/users/")) allowed = role === "administrador" || (role === "cajero" && method === "GET");
+  else if (path === "/staff-status") allowed = role === "administrador";
+  else if (path === "/tables" || path.startsWith("/tables/")) allowed = method === "GET" || ["administrador", "mesero", "cajero"].includes(role);
+  else if (path === "/orders" || path.startsWith("/orders/")) allowed = method === "GET" || (method === "POST" && ["administrador", "mesero", "cliente"].includes(role)) || (method === "PUT" && staff.includes(role));
+  else if (path === "/payments" || path.startsWith("/cash-closing")) allowed = ["administrador", "cajero"].includes(role);
+  else if (path === "/alerts" || path.startsWith("/alerts/")) allowed = staff.includes(role);
+  if (!allowed) return c.json({ error: "Acceso no autorizado" }, 403);
+  const prefixes: Record<string, string> = { products: "product:", tables: "table:", orders: "order:", alerts: "alert:" };
+  const [, resource, id] = path.split("/");
+  if (id && prefixes[resource] && !id.startsWith(prefixes[resource])) return c.json({ error: "Identificador inválido" }, 400);
+  await next();
+});
+app.get("/make-server-71783a73/health", async (c) => {
+  await kv.get("system_configuration");
+  return c.json({ success: true, database: "connected" });
 });
 
 // ==================== AUTENTICACIÓN ====================
@@ -164,6 +79,7 @@ app.post("/make-server-71783a73/init-demo-data", async (c) => {
 app.post("/make-server-71783a73/auth/signup", async (c) => {
   try {
     const { email, password, name, role } = await c.req.json();
+    if (!["cliente", "administrador", "mesero", "cajero", "cocinero"].includes(role)) return c.json({ error: "Rol inválido" }, 400);
 
     // Validar que solo admin puede crear usuarios con ciertos roles
     const authHeader = c.req.header("Authorization");
@@ -179,7 +95,7 @@ app.post("/make-server-71783a73/auth/signup", async (c) => {
     }
 
     // Solo administradores pueden crear usuarios de staff
-    if (role !== "cliente" && (!requestingUser || requestingUser.role !== "administrador")) {
+    if (role !== "cliente" && (!requestingUser || requestingUser.role !== "administrador" || requestingUser.active === false)) {
       return c.json({ error: "Solo administradores pueden crear usuarios de staff" }, 403);
     }
 
@@ -246,7 +162,8 @@ app.post("/make-server-71783a73/auth/login", async (c) => {
     const userProfile = await kv.get(`user_profile:${data.user.id}`);
 
     // Verificar si el usuario está activo
-    if (userProfile && userProfile.active === false) {
+    if (!userProfile) return c.json({ error: "Perfil no configurado. Contacte al administrador." }, 403);
+    if (userProfile.active === false) {
       return c.json({ 
         error: `Cuenta desactivada. Motivo: ${userProfile.deactivationNote || "No especificado"}` 
       }, 403);
@@ -259,7 +176,7 @@ app.post("/make-server-71783a73/auth/login", async (c) => {
         id: data.user.id,
         email: data.user.email,
         name: data.user.user_metadata?.name || "",
-        role: data.user.user_metadata?.role || "cliente"
+        role: "cliente"
       }
     });
   } catch (error) {
@@ -291,7 +208,7 @@ app.get("/make-server-71783a73/auth/session", async (c) => {
         id: data.user.id,
         email: data.user.email,
         name: data.user.user_metadata?.name || "",
-        role: data.user.user_metadata?.role || "cliente"
+        role: "cliente"
       }
     });
   } catch (error) {
@@ -328,7 +245,8 @@ app.put("/make-server-71783a73/profile", async (c) => {
       return c.json({ error: "Unauthorized" }, 401);
     }
 
-    const updates = await c.req.json();
+    const { name, phone, avatar } = await c.req.json();
+    const updates = Object.fromEntries(Object.entries({ name, phone, avatar }).filter(([,v]) => v !== undefined));
     const currentProfile = await kv.get(`user_profile:${user.id}`) || {};
     
     const updatedProfile = {
@@ -362,14 +280,14 @@ app.get("/make-server-71783a73/users", async (c) => {
 
     // Verificar que el usuario es administrador
     const profile = await kv.get(`user_profile:${user.id}`);
-    if (!profile || profile.role !== "administrador") {
-      return c.json({ error: "Solo administradores pueden ver usuarios" }, 403);
+    if (!profile || !["administrador", "cajero"].includes(profile.role)) {
+      return c.json({ error: "Acceso no autorizado" }, 403);
     }
 
     // Obtener todos los perfiles de usuarios con reintentos
     const userProfiles = await retryOperation(() => kv.getByPrefix("user_profile:"), 3, 500) || [];
     
-    return c.json({ success: true, users: userProfiles });
+    return c.json({ success: true, users: profile.role === "cajero" ? userProfiles.filter(u => u.role === "mesero").map(u => ({ id: u.id, name: u.name, role: u.role })) : userProfiles });
   } catch (error) {
     console.error("Error obteniendo usuarios:", error);
     return c.json({ error: error.message, users: [] }, 500);
@@ -623,8 +541,11 @@ app.put("/make-server-71783a73/tables/:id", async (c) => {
 
 app.get("/make-server-71783a73/orders", async (c) => {
   try {
+    const token = c.req.header("Authorization")?.split(" ")[1];
+    const { data } = await supabase.auth.getUser(token);
+    const profile = await kv.get(`user_profile:${data.user.id}`);
     const orders = await retryOperation(() => kv.getByPrefix("order:"), 3, 500) || [];
-    return c.json({ success: true, orders: orders.map(o => o) });
+    return c.json({ success: true, orders: profile.role === "cliente" ? orders.filter(o => o.customerId === data.user.id || o.createdBy === data.user.id) : orders });
   } catch (error) {
     console.error("Error obteniendo pedidos:", error);
     return c.json({ error: error.message, orders: [] }, 500);
@@ -634,7 +555,7 @@ app.get("/make-server-71783a73/orders", async (c) => {
 app.post("/make-server-71783a73/orders", async (c) => {
   try {
     const authHeader = c.req.header("Authorization");
-    console.log("Authorization header:", authHeader);
+    
     
     const token = authHeader?.split(" ")[1];
     console.log("Token extracted:", token ? "Present" : "Missing");
@@ -656,9 +577,11 @@ app.post("/make-server-71783a73/orders", async (c) => {
       return c.json({ error: "Unauthorized - Invalid user" }, 401);
     }
 
-    console.log("User creating order:", user.id, user.email);
+    
 
     const order = await c.req.json();
+    const profile = await kv.get(`user_profile:${user.id}`);
+    if (profile.role === "cliente") { order.customerId = user.id; order.customerEmail = user.email; order.status = "pending"; }
     const orderId = `order:${Date.now()}`;
     
     const newOrder = {
@@ -778,6 +701,7 @@ app.post("/make-server-71783a73/payments", async (c) => {
     }
 
     const payment = await c.req.json();
+    if (typeof payment.orderId !== "string" || !payment.orderId.startsWith("order:")) return c.json({ error: "Pedido inválido" }, 400);
     const paymentId = `payment:${Date.now()}`;
     
     const newPayment = {
@@ -910,226 +834,4 @@ app.get("/make-server-71783a73/staff-status", async (c) => {
 // ==================== INICIALIZACIÓN ====================
 
 // Endpoint para inicializar datos de ejemplo
-app.post("/make-server-71783a73/init-demo-data", async (c) => {
-  try {
-    // Crear usuarios de demostración para todos los roles
-    const demoUsers = [
-      {
-        email: "admin@globatech.com",
-        password: "admin123",
-        name: "Administrador Principal",
-        role: "administrador",
-        phone: "+57 1 234 5678"
-      },
-      {
-        email: "mesero@globatech.com",
-        password: "mesero123",
-        name: "Carlos Mesero",
-        role: "mesero",
-        phone: "+57 300 111 2222"
-      },
-      {
-        email: "cajero@globatech.com",
-        password: "cajero123",
-        name: "María Cajera",
-        role: "cajero",
-        phone: "+57 300 333 4444"
-      },
-      {
-        email: "cocinero@globatech.com",
-        password: "cocinero123",
-        name: "Juan Cocinero",
-        role: "cocinero",
-        phone: "+57 300 555 6666"
-      },
-      {
-        email: "cliente@globatech.com",
-        password: "cliente123",
-        name: "Ana Cliente",
-        role: "cliente",
-        phone: "+57 300 777 8888"
-      }
-    ];
-
-    for (const user of demoUsers) {
-      try {
-        const existingUserId = await kv.get(`user_by_email:${user.email}`);
-        
-        if (existingUserId) {
-          console.log(`Usuario ${user.email} ya existe, verificando perfil...`);
-          
-          // Verificar que el perfil existe en KV
-          const existingProfile = await kv.get(`user_profile:${existingUserId}`);
-          
-          if (!existingProfile) {
-            // El usuario existe en Auth pero no tiene perfil en KV, crearlo
-            const userProfile = {
-              id: existingUserId,
-              email: user.email,
-              name: user.name,
-              role: user.role,
-              createdAt: new Date().toISOString(),
-              phone: user.phone,
-              avatar: "",
-              active: true
-            };
-            await kv.set(`user_profile:${existingUserId}`, userProfile);
-            console.log(`Perfil creado para usuario existente: ${user.email}`);
-          }
-          continue;
-        }
-
-        // Intentar crear el usuario en Supabase Auth
-        const { data: newUser, error: userError } = await supabase.auth.admin.createUser({
-          email: user.email,
-          password: user.password,
-          email_confirm: true,
-          user_metadata: { 
-            name: user.name, 
-            role: user.role 
-          }
-        });
-
-        if (userError) {
-          // Si el usuario ya existe en Auth, obtener su ID
-          if (userError.message?.includes("already been registered")) {
-            console.log(`Usuario ${user.email} ya existe en Auth, buscando ID...`);
-            
-            // Buscar el usuario por email en Auth
-            const { data: { users }, error: listError } = await supabase.auth.admin.listUsers();
-            
-            if (!listError && users) {
-              const existingAuthUser = users.find(u => u.email === user.email);
-              
-              if (existingAuthUser) {
-                // Crear perfil en KV para usuario existente
-                const userProfile = {
-                  id: existingAuthUser.id,
-                  email: user.email,
-                  name: user.name,
-                  role: user.role,
-                  createdAt: new Date().toISOString(),
-                  phone: user.phone,
-                  avatar: "",
-                  active: true
-                };
-                await kv.set(`user_profile:${existingAuthUser.id}`, userProfile);
-                await kv.set(`user_by_email:${user.email}`, existingAuthUser.id);
-                console.log(`Perfil sincronizado para usuario existente: ${user.email}`);
-              }
-            }
-          } else {
-            console.error(`Error creando usuario ${user.email}:`, userError.message);
-          }
-          continue;
-        }
-
-        if (newUser?.user) {
-          const userProfile = {
-            id: newUser.user.id,
-            email: user.email,
-            name: user.name,
-            role: user.role,
-            createdAt: new Date().toISOString(),
-            phone: user.phone,
-            avatar: "",
-            active: true
-          };
-
-          await kv.set(`user_profile:${newUser.user.id}`, userProfile);
-          await kv.set(`user_by_email:${user.email}`, newUser.user.id);
-          console.log(`Usuario ${user.role} creado exitosamente: ${user.email}`);
-        }
-      } catch (userCreationError) {
-        console.error(`Excepción al procesar usuario ${user.email}:`, userCreationError.message);
-        // Continuar con el siguiente usuario
-        continue;
-      }
-    }
-
-    // Crear mesas de ejemplo si no existen
-    const existingTables = await kv.getByPrefix("table:");
-    
-    if (!existingTables || existingTables.length === 0) {
-      const tables = [
-        { id: "table:1", number: "1", capacity: 4, status: "disponible", waiter: null },
-        { id: "table:2", number: "2", capacity: 2, status: "disponible", waiter: null },
-        { id: "table:3", number: "3", capacity: 6, status: "disponible", waiter: null },
-        { id: "table:4", number: "4", capacity: 4, status: "disponible", waiter: null },
-        { id: "table:5", number: "5", capacity: 8, status: "disponible", waiter: null },
-        { id: "table:6", number: "6", capacity: 2, status: "disponible", waiter: null },
-        { id: "table:7", number: "7", capacity: 4, status: "disponible", waiter: null },
-        { id: "table:8", number: "8", capacity: 6, status: "disponible", waiter: null },
-        { id: "table:9", number: "9", capacity: 4, status: "disponible", waiter: null },
-        { id: "table:10", number: "10", capacity: 2, status: "disponible", waiter: null },
-        { id: "table:11", number: "11", capacity: 4, status: "disponible", waiter: null },
-        { id: "table:12", number: "12", capacity: 6, status: "disponible", waiter: null },
-      ];
-
-      for (const table of tables) {
-        await kv.set(table.id, table);
-      }
-    }
-
-    // Crear productos de ejemplo si no existen
-    const existingProducts = await kv.getByPrefix("product:");
-    
-    if (!existingProducts || existingProducts.length === 0) {
-      const products = [
-        { id: "product:1", name: "Bandeja Paisa", category: "Platos Fuertes", price: 28000, stock: 50, minStock: 10, image: "" },
-        { id: "product:2", name: "Ajiaco Santafereño", category: "Platos Fuertes", price: 22000, stock: 30, minStock: 10, image: "" },
-        { id: "product:3", name: "Sancocho", category: "Platos Fuertes", price: 20000, stock: 40, minStock: 10, image: "" },
-        { id: "product:4", name: "Arroz con Pollo", category: "Platos Fuertes", price: 18000, stock: 35, minStock: 10, image: "" },
-        { id: "product:5", name: "Limonada Natural", category: "Bebidas", price: 5000, stock: 100, minStock: 20, image: "" },
-        { id: "product:6", name: "Café", category: "Bebidas", price: 3000, stock: 150, minStock: 30, image: "" },
-        { id: "product:7", name: "Jugo de Naranja", category: "Bebidas", price: 6000, stock: 80, minStock: 20, image: "" },
-        { id: "product:8", name: "Brownie", category: "Postres", price: 8000, stock: 25, minStock: 5, image: "" },
-      ];
-
-      for (const product of products) {
-        await kv.set(product.id, product);
-      }
-      console.log("Productos de ejemplo creados exitosamente");
-    } else {
-      console.log("Los productos ya existen, saltando creación");
-    }
-
-    // Configuración inicial del sistema (solo si no existe)
-    const existingConfig = await kv.get("system_configuration");
-    
-    if (!existingConfig) {
-      const defaultConfig = {
-        restaurantName: "SIREST - Globatech",
-        address: "Calle Principal #123, Bogotá, Colombia",
-        phone: "+57 300 123 4567",
-        email: "info@globatech.com",
-        taxRate: 19,
-        currency: "COP",
-        timezone: "America/Bogota",
-        updatedAt: new Date().toISOString()
-      };
-
-      await kv.set("system_configuration", defaultConfig);
-      console.log("Configuración del sistema creada exitosamente");
-    } else {
-      console.log("La configuración del sistema ya existe");
-    }
-
-    return c.json({ 
-      success: true, 
-      message: "Datos de ejemplo inicializados correctamente",
-      users: {
-        admin: "admin@globatech.com / admin123",
-        mesero: "mesero@globatech.com / mesero123",
-        cajero: "cajero@globatech.com / cajero123",
-        cocinero: "cocinero@globatech.com / cocinero123",
-        cliente: "cliente@globatech.com / cliente123"
-      }
-    });
-  } catch (error) {
-    console.error("Error inicializando datos:", error);
-    return c.json({ error: error.message }, 500);
-  }
-});
-
 Deno.serve(app.fetch);
