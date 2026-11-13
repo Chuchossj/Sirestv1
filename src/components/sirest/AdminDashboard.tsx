@@ -490,7 +490,7 @@ export function AdminDashboard({ onNavigate, accessToken }: { onNavigate?: (modu
       {/* Gráficos principales */}
       <div className="sirest-admin-charts">
         {/* Ventas semanales */}
-        <Card className="lg:col-span-2 border-0 shadow-lg">
+        <Card className="border-0 shadow-lg">
           <CardHeader className="border-b border-gray-100">
             <div className="sirest-chart-heading">
               <div><CardTitle className="text-xl text-[#0B2240]">Análisis de Ventas</CardTitle>
