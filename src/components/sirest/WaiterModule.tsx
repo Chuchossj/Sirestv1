@@ -154,13 +154,6 @@ export function WaiterModule({ activeTab, accessToken }: WaiterModuleProps) {
       });
 
       if (response.success) {
-        // Actualizar estado de la mesa
-        await apiRequest(`/tables/${selectedTable.id}`, {
-          method: "PUT",
-          body: { ...selectedTable, status: "ocupada" },
-          accessToken
-        });
-
         toast.success(`✅ Pedido enviado a cocina - Mesa ${selectedTable.number}`);
         setCurrentOrder([]);
         setOrderNotes("");
@@ -170,7 +163,7 @@ export function WaiterModule({ activeTab, accessToken }: WaiterModuleProps) {
       }
     } catch (error) {
       console.error("Error enviando pedido:", error);
-      toast.error("❌ Error al enviar pedido a cocina");
+      toast.error(error instanceof Error ? error.message : "Error al enviar pedido a cocina");
     }
   };
 
