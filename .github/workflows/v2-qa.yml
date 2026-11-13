@@ -1,0 +1,44 @@
+name: SIREST V2 isolated QA
+on:
+  pull_request:
+  workflow_dispatch:
+  push:
+    branches: ["recovery/sirest-supabase", "v2"]
+permissions:
+  contents: read
+jobs:
+  restaurant-flow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.48.3
+      - run: npm install --no-audit --no-fund
+      - name: Create isolated local project
+        run: |
+          supabase init
+          mkdir -p supabase/functions/make-server-71783a73 supabase/migrations
+          cp src/supabase/functions/server/index.tsx supabase/functions/make-server-71783a73/index.ts
+          cp src/supabase/functions/server/kv_store.tsx supabase/functions/make-server-71783a73/kv_store.tsx
+          cat > supabase/migrations/20261112000000_qa_schema.sql <<'SQL'
+          create table public.kv_store_71783a73 (key text primary key, value jsonb not null);
+          alter table public.kv_store_71783a73 enable row level security;
+          revoke all on table public.kv_store_71783a73 from anon, authenticated, public;
+          grant select, insert, update, delete on table public.kv_store_71783a73 to service_role;
+          SQL
+          supabase start
+          supabase status -o env > /tmp/sirest-local.env
+      - name: Run automated restaurant flow
+        run: |
+          set -a
+          source /tmp/sirest-local.env
+          set +a
+          node tests/restaurant-flow.mjs
+      - name: Stop isolated stack
+        if: always()
+        run: supabase stop --no-backup
