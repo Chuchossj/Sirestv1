@@ -64,6 +64,7 @@ interface Order {
 }
 
 interface Payment {
+  status: string;
   id: string;
   total: number;
   paymentMethod: string;
@@ -124,7 +125,7 @@ export function ReportsAndAnalytics({ accessToken }: { accessToken: string }) {
   const processedData = useMemo(() => {
     const products = productsData?.products || [];
     const orders = ordersData?.orders || [];
-    const payments = paymentsData?.payments || [];
+    const payments = (paymentsData?.payments || []).filter(p => p.status === "completed");
     const users = usersData?.users || [];
 
     // Filtrar por período
@@ -149,18 +150,19 @@ export function ReportsAndAnalytics({ accessToken }: { accessToken: string }) {
         break;
     }
 
-    const filteredPayments = payments.filter(p => new Date(p.createdAt) >= startDate);
+    const day = (date: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota", year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
+    const filteredPayments = payments.filter(p => selectedPeriod === "today" ? day(new Date(p.createdAt)) === day(now) : new Date(p.createdAt) >= startDate).sort((a,b)=>new Date(a.createdAt).getTime()-new Date(b.createdAt).getTime());
     const filteredOrders = orders.filter(o => new Date(o.createdAt) >= startDate);
 
     // KPIs principales
     const totalSales = filteredPayments.reduce((sum, p) => sum + (p.total || 0), 0);
     const totalOrders = filteredOrders.length;
-    const averageTicket = totalOrders > 0 ? totalSales / totalOrders : 0;
+    const averageTicket = filteredPayments.length > 0 ? totalSales / filteredPayments.length : 0;
 
     // Ventas por día
     const salesByDay = new Map<string, { ventas: number; pedidos: number }>();
     filteredPayments.forEach(payment => {
-      const date = new Date(payment.createdAt).toLocaleDateString('es-ES', { month: 'short', day: 'numeric' });
+      const date = day(new Date(payment.createdAt));
       const current = salesByDay.get(date) || { ventas: 0, pedidos: 0 };
       salesByDay.set(date, {
         ventas: current.ventas + payment.total,
@@ -175,17 +177,17 @@ export function ReportsAndAnalytics({ accessToken }: { accessToken: string }) {
         pedidos: data.pedidos,
         promedio: data.pedidos > 0 ? data.ventas / data.pedidos : 0
       }))
-      .slice(-7); // Últimos 7 días
+      ;
 
     // Ventas por hora (solo hoy)
     const hourlySales = new Map<number, { ventas: number; pedidos: number }>();
     const todayPayments = payments.filter(p => {
       const paymentDate = new Date(p.createdAt);
-      return paymentDate.toDateString() === now.toDateString();
+      return day(paymentDate) === day(now);
     });
 
     todayPayments.forEach(payment => {
-      const hour = new Date(payment.createdAt).getHours();
+      const hour = Number(new Intl.DateTimeFormat("en-GB", { timeZone: "America/Bogota", hour: "2-digit", hourCycle: "h23" }).format(new Date(payment.createdAt)));
       const current = hourlySales.get(hour) || { ventas: 0, pedidos: 0 };
       hourlySales.set(hour, {
         ventas: current.ventas + payment.total,
@@ -203,7 +205,8 @@ export function ReportsAndAnalytics({ accessToken }: { accessToken: string }) {
 
     // Productos más vendidos
     const productSales = new Map<string, { name: string; quantity: number; revenue: number }>();
-    filteredOrders.forEach(order => {
+    const paidOrderIds = new Set(filteredPayments.map(p => p.orderId));
+    orders.filter(o => paidOrderIds.has(o.id)).forEach(order => {
       order.items?.forEach(item => {
         const current = productSales.get(item.productId || item.name) || { 
           name: item.name, 
@@ -269,7 +272,7 @@ export function ReportsAndAnalytics({ accessToken }: { accessToken: string }) {
         ventas: totalRevenue,
         pedidos: userOrders.length,
         active: s.active,
-        rating: 4.5 + Math.random() * 0.5 // Simulado por ahora
+        rating: null
       };
     });
 
@@ -917,7 +920,7 @@ export function ReportsAndAnalytics({ accessToken }: { accessToken: string }) {
                       <TableHead>Rol</TableHead>
                       <TableHead>Ventas Generadas</TableHead>
                       <TableHead>Pedidos Atendidos</TableHead>
-                      <TableHead>Calificación</TableHead>
+                      <TableHead>Calificación (sin medición)</TableHead>
                       <TableHead>Estado</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -933,7 +936,7 @@ export function ReportsAndAnalytics({ accessToken }: { accessToken: string }) {
                         <TableCell>
                           <div className="flex items-center space-x-1">
                             <Star className="h-3 w-3 fill-current" style={{ color: colors.highlight }} />
-                            <span>{staff.rating.toFixed(1)}</span>
+                            <span>Sin datos</span>
                           </div>
                         </TableCell>
                         <TableCell>
