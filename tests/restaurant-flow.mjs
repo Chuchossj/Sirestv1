@@ -91,8 +91,17 @@ await test("Waiter creates order; customer cannot see another customer's order",
   order = (await request("/orders", { method: "POST", token: waiter.accessToken, body: { tableId: "table:qa", tableNumber: "1", items: [{ productId: product.id, name: product.name, quantity: 1, price: 25000 }], total: 25000, status: "pending" } })).order;
   assert.equal(order.createdBy, waiter.user.id);
   assert.equal(order.status, "pending");
+  assert.equal(order.subtotal, 25000);
+  assert.equal((await request("/products", { token: admin.accessToken })).products.find(p => p.id === product.id).stock, 28);
+  assert.equal((await request("/tables", { token: waiter.accessToken })).tables.find(t => t.id === "table:qa").status, "ocupada");
   assert.ok(!(await request("/orders", { token: customer.accessToken })).orders.some(o => o.id === order.id));
   await request("/orders/" + order.id, { method: "PUT", token: customer.accessToken, body: { status: "paid" }, expected: 403 });
+});
+await test("Reject invalid stock and illegal transitions", async () => {
+  await request("/orders", { method: "POST", token: waiter.accessToken, body: { tableId: "table:qa", items: [{ productId: product.id, quantity: 9999 }] }, expected: 409 });
+  await request("/orders/" + order.id, { method: "PUT", token: waiter.accessToken, body: { status: "paid" }, expected: 409 });
+  await request("/payments", { method: "POST", token: cashier.accessToken, body: { orderId: order.id, paymentMethod: "efectivo", receivedAmount: 50000 }, expected: 409 });
+  assert.equal((await request("/products", { token: admin.accessToken })).products.find(p => p.id === product.id).stock, 28);
 });
 await test("Kitchen sees order and marks it preparing and ready", async () => {
   assert.ok((await request("/orders", { token: cook.accessToken })).orders.some(o => o.id === order.id));
@@ -104,15 +113,18 @@ await test("Kitchen sees order and marks it preparing and ready", async () => {
   await request("/orders/" + order.id, { method: "PUT", token: waiter.accessToken, body: { status: "served" } });
 });
 await test("Cashier collects payment; order and closing reconcile", async () => {
-  await request("/payments", { method: "POST", token: waiter.accessToken, body: { orderId: order.id, total: 25000, paymentMethod: "efectivo" }, expected: 403 });
-  const r = await request("/payments", { method: "POST", token: cashier.accessToken, body: { orderId: order.id, total: 25000, paymentMethod: "efectivo" } });
+  await request("/payments", { method: "POST", token: waiter.accessToken, body: { orderId: order.id, total: 25000, paymentMethod: "efectivo", receivedAmount: 50000 }, expected: 403 });
+  const r = await request("/payments", { method: "POST", token: cashier.accessToken, body: { orderId: order.id, total: 25000, paymentMethod: "efectivo", receivedAmount: 50000 } });
   assert.equal(r.payment.status, "completed");
   assert.equal((await request("/orders", { token: admin.accessToken })).orders.find(o => o.id === order.id).status, "paid");
   const payments = await request("/payments", { token: admin.accessToken });
   assert.equal(payments.payments.filter(p => p.orderId === order.id).length, 1);
+  assert.equal(r.payment.total, 32250);
+  await request("/payments", { method: "POST", token: cashier.accessToken, body: { orderId: order.id, paymentMethod: "efectivo", receivedAmount: 50000 }, expected: 409 });
+  assert.equal((await request("/tables", { token: admin.accessToken })).tables.find(t => t.id === "table:qa").status, "disponible");
   const closing = await request("/cash-closing", { method: "POST", token: cashier.accessToken, body: {} });
-  assert.equal(closing.report.totalSales, 25000);
-  assert.equal(closing.report.totalCash, 25000);
+  assert.equal(closing.report.totalSales, 32250);
+  assert.equal(closing.report.totalCash, 32250);
   assert.equal(closing.report.totalTransactions, 1);
 });
 await test("Deactivated staff cannot log in or use prior token", async () => {
