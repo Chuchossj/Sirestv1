@@ -1,7 +1,7 @@
-import { Hono } from "npm:hono";
-import { cors } from "npm:hono/cors";
-import { logger } from "npm:hono/logger";
-import { createClient } from "jsr:@supabase/supabase-js@2";
+import { Hono } from "npm:hono@4.7.11";
+import { cors } from "npm:hono@4.7.11/cors";
+import { logger } from "npm:hono@4.7.11/logger";
+import { createClient } from "jsr:@supabase/supabase-js@2.49.8";
 import * as kv from "./kv_store.tsx";
 
 const app = new Hono();
@@ -41,7 +41,7 @@ async function retryOperation<T>(
 
 // Authorization is enforced on the server, not just in the UI.
 app.use("/make-server-71783a73/*", async (c, next) => {
-  const path = c.req.path.replace("/make-server-71783a73", "");
+  const path = decodeURIComponent(c.req.path.replace("/make-server-71783a73", ""));
   const method = c.req.method;
   if (method === "OPTIONS" || path === "/health" || path === "/auth/login" || path === "/auth/signup") return next();
   const token = c.req.header("Authorization")?.split(" ")[1];
@@ -63,6 +63,9 @@ app.use("/make-server-71783a73/*", async (c, next) => {
   else if (path === "/payments" || path.startsWith("/cash-closing")) allowed = ["administrador", "cajero"].includes(role);
   else if (path === "/alerts" || path.startsWith("/alerts/")) allowed = staff.includes(role);
   if (!allowed) return c.json({ error: "Acceso no autorizado" }, 403);
+  const prefixes: Record<string, string> = { products: "product:", tables: "table:", orders: "order:", alerts: "alert:" };
+  const [, resource, id] = path.split("/");
+  if (id && prefixes[resource] && !id.startsWith(prefixes[resource])) return c.json({ error: "Identificador inválido" }, 400);
   await next();
 });
 app.get("/make-server-71783a73/health", async (c) => {
@@ -159,7 +162,8 @@ app.post("/make-server-71783a73/auth/login", async (c) => {
     const userProfile = await kv.get(`user_profile:${data.user.id}`);
 
     // Verificar si el usuario está activo
-    if (userProfile && userProfile.active === false) {
+    if (!userProfile) return c.json({ error: "Perfil no configurado. Contacte al administrador." }, 403);
+    if (userProfile.active === false) {
       return c.json({ 
         error: `Cuenta desactivada. Motivo: ${userProfile.deactivationNote || "No especificado"}` 
       }, 403);
@@ -204,7 +208,7 @@ app.get("/make-server-71783a73/auth/session", async (c) => {
         id: data.user.id,
         email: data.user.email,
         name: data.user.user_metadata?.name || "",
-        role: data.user.user_metadata?.role || "cliente"
+        role: "cliente"
       }
     });
   } catch (error) {
@@ -697,6 +701,7 @@ app.post("/make-server-71783a73/payments", async (c) => {
     }
 
     const payment = await c.req.json();
+    if (typeof payment.orderId !== "string" || !payment.orderId.startsWith("order:")) return c.json({ error: "Pedido inválido" }, 400);
     const paymentId = `payment:${Date.now()}`;
     
     const newPayment = {
