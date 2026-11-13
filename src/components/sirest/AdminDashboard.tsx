@@ -89,7 +89,7 @@ const performanceData = [
   { categoria: "Calidad", actual: 95, meta: 90, color: "#FFD23F" }
 ];
 
-export function AdminDashboard({ onNavigate }: { onNavigate?: (module: string) => void }) {
+export function AdminDashboard({ onNavigate, accessToken }: { onNavigate?: (module: string) => void; accessToken: string }) {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
   const [scheduleConfig, setScheduleConfig] = useState({
@@ -110,7 +110,7 @@ export function AdminDashboard({ onNavigate }: { onNavigate?: (module: string) =
   });
   const [quickActionDialog, setQuickActionDialog] = useState<string | null>(null);
 
-  const accessToken = localStorage.getItem('accessToken');
+
 
   // Usar hooks de tiempo real para todos los datos
   const { data: paymentsData } = useRealtimeData<{ success: boolean; payments: any[] }>({
