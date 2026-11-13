@@ -64,30 +64,8 @@ interface DashboardStats {
   criticalStock: number;
 }
 
-const salesData = [
-  { name: "Lun", ventas: 2400, pedidos: 24, meta: 2200 },
-  { name: "Mar", ventas: 1398, pedidos: 18, meta: 2200 },
-  { name: "Mié", ventas: 9800, pedidos: 45, meta: 2200 },
-  { name: "Jue", ventas: 3908, pedidos: 32, meta: 2200 },
-  { name: "Vie", ventas: 4800, pedidos: 38, meta: 2200 },
-  { name: "Sáb", ventas: 12800, pedidos: 67, meta: 2200 },
-  { name: "Dom", ventas: 14900, pedidos: 72, meta: 2200 }
-];
-
-const topProducts = [
-  { name: "Bandeja Paisa", color: "#0B2240", value: 35 },
-  { name: "Ajiaco Santafereño", color: "#5B2C90", value: 25 },
-  { name: "Sancocho", color: "#F28C1B", value: 20 },
-  { name: "Arroz con Pollo", color: "#FFD23F", value: 12 },
-  { name: "Otros", color: "#6C757D", value: 8 }
-];
-
-const performanceData = [
-  { categoria: "Ventas", actual: 87, meta: 100, color: "#0B2240" },
-  { categoria: "Satisfacción", actual: 92, meta: 90, color: "#5B2C90" },
-  { categoria: "Eficiencia", actual: 78, meta: 85, color: "#F28C1B" },
-  { categoria: "Calidad", actual: 95, meta: 90, color: "#FFD23F" }
-];
+const dayKey = (date: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
+const chartColors = ['#0B2240','#5B2C90','#F28C1B','#FFD23F','#6C757D'];
 
 export function AdminDashboard({ onNavigate, accessToken }: { onNavigate?: (module: string) => void; accessToken: string }) {
   const [alerts, setAlerts] = useState<Alert[]>([]);
@@ -146,18 +124,38 @@ export function AdminDashboard({ onNavigate, accessToken }: { onNavigate?: (modu
   // Calcular estadísticas en tiempo real basadas en los datos
   const stats: DashboardStats = {
     todaySales: calculateTodaySales(),
-    salesGrowth: 12,
+    salesGrowth: 0,
     activeOrders: calculateActiveOrders(),
-    averageTime: 18,
+    averageTime: 0,
     occupiedTables: calculateOccupiedTables(),
     totalTables: tablesData?.tables?.length || 0,
     criticalStock: calculateCriticalStock()
   };
 
+  const completedPayments = (paymentsData?.payments || []).filter(p => p.status === 'completed');
+  const todayKey = dayKey(new Date());
+  const yesterdayKey = dayKey(new Date(Date.now() - 86400000));
+  const yesterdaySales = completedPayments.filter(p => dayKey(new Date(p.createdAt)) === yesterdayKey).reduce((sum,p) => sum + Number(p.total || 0), 0);
+  const growthLabel = yesterdaySales > 0 ? ((stats.todaySales - yesterdaySales) / yesterdaySales * 100).toFixed(1) + '% vs ayer' : 'Sin base de comparación';
+  const active = (ordersData?.orders || []).filter(o => ['pending','preparing','ready','served'].includes(o.status));
+  const avgWait = active.length ? Math.round(active.reduce((sum,o) => sum + Math.max(0, Date.now()-new Date(o.createdAt).getTime()),0) / active.length / 60000) : 0;
+  const salesData = Array.from({ length: 7 }, (_,i) => {
+    const date = new Date(Date.now() - (6-i)*86400000);
+    const key = dayKey(date);
+    const paid = completedPayments.filter(p => dayKey(new Date(p.createdAt)) === key);
+    return { name: key.slice(5), ventas: paid.reduce((sum,p) => sum + Number(p.total || 0),0), pedidos: paid.length };
+  });
+  const paidToday = new Set(completedPayments.filter(p => dayKey(new Date(p.createdAt)) === todayKey).map(p => p.orderId));
+  const quantities = new Map<string, number>();
+  for (const order of ordersData?.orders || []) {
+    if (!paidToday.has(order.id)) continue;
+    for (const item of order.items || []) quantities.set(item.name, (quantities.get(item.name)||0) + Number(item.quantity||0));
+  }
+  const topProducts = [...quantities.entries()].sort((a,b)=>b[1]-a[1]).slice(0,5).map(([name,value],i)=>({ name,value,color:chartColors[i] }));
   // Personal filtrado de usuarios en tiempo real
   const staff: StaffMember[] = useMemo(() => {
     const users = usersData?.users || [];
-    console.log('👥 Usuarios disponibles en AdminDashboard:', users);
+
     return users
       .filter((u: any) => u.role !== 'cliente' && u.role !== 'administrador')
       .map((u: any) => ({
@@ -165,11 +163,10 @@ export function AdminDashboard({ onNavigate, accessToken }: { onNavigate?: (modu
         name: u.name,
         role: u.role,
         status: u.active ? 'activo' : 'inactivo',
-        shift: getRoleShift(u.role),
-        performance: Math.floor(Math.random() * 30) + 70,
-        tasksCompleted: Math.floor(Math.random() * 20) + 5
+        shift: 'No registrado',
+        tasksCompleted: (ordersData?.orders || []).filter(o => o.createdBy === u.id && o.status === 'paid' && dayKey(new Date(o.paidAt || o.createdAt)) === todayKey).length
       }));
-  }, [usersData]);
+  }, [usersData, ordersData, todayKey]);
 
   // Funciones helper - Declaradas con 'function' para hoisting (corrected)
   function getRoleShift(role: string) {
@@ -201,16 +198,16 @@ export function AdminDashboard({ onNavigate, accessToken }: { onNavigate?: (modu
 
   function calculateTodaySales(): number {
     if (!paymentsData?.payments) return 0;
-    const today = new Date().toDateString();
+    const today = dayKey(new Date());
     return paymentsData.payments
-      .filter((p: any) => new Date(p.createdAt).toDateString() === today)
+      .filter((p: any) => p.status === 'completed' && dayKey(new Date(p.createdAt)) === today)
       .reduce((sum: number, p: any) => sum + (p.total || 0), 0);
   }
 
   function calculateActiveOrders(): number {
     if (!ordersData?.orders) return 0;
     return ordersData.orders.filter((o: any) => 
-      o.status === 'pending' || o.status === 'preparing'
+      ['pending','preparing','ready','served'].includes(o.status)
     ).length;
   }
 
@@ -441,7 +438,7 @@ export function AdminDashboard({ onNavigate, accessToken }: { onNavigate?: (modu
             <div className="text-3xl font-bold">${stats.todaySales.toLocaleString()}</div>
             <div className="flex items-center space-x-1 text-xs opacity-90 mt-1">
               <TrendingUp className="h-3 w-3" />
-              <span>+{stats.salesGrowth}% vs ayer</span>
+              <span>{growthLabel}</span>
             </div>
           </CardContent>
         </Card>
@@ -454,7 +451,7 @@ export function AdminDashboard({ onNavigate, accessToken }: { onNavigate?: (modu
           <CardContent>
             <div className="text-3xl font-bold">{stats.activeOrders}</div>
             <div className="text-xs opacity-90 mt-1">
-              Tiempo promedio: <span className="font-medium">{stats.averageTime} min</span>
+              Espera promedio: <span className="font-medium">{avgWait} min</span>
             </div>
           </CardContent>
         </Card>
@@ -495,7 +492,7 @@ export function AdminDashboard({ onNavigate, accessToken }: { onNavigate?: (modu
           <CardHeader className="border-b border-gray-100">
             <CardTitle className="text-xl text-[#0B2240]">Análisis de Ventas Semanal</CardTitle>
             <CardDescription>
-              Ingresos y pedidos por día vs. meta establecida
+              Ingresos cobrados durante los últimos siete días
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
@@ -517,7 +514,7 @@ export function AdminDashboard({ onNavigate, accessToken }: { onNavigate?: (modu
                   }}
                 />
                 <Bar dataKey="ventas" fill="#0B2240" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="meta" fill="#FFD23F" radius={[4, 4, 0, 0]} opacity={0.6} />
+                
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -547,7 +544,7 @@ export function AdminDashboard({ onNavigate, accessToken }: { onNavigate?: (modu
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value) => [`${value}%`, 'Participación']} />
+                <Tooltip formatter={(value) => [`${value} unidades`, 'Ventas']} />
               </PieChart>
             </ResponsiveContainer>
             <div className="space-y-2 mt-4">
@@ -560,7 +557,7 @@ export function AdminDashboard({ onNavigate, accessToken }: { onNavigate?: (modu
                     ></div>
                     <span className="truncate font-medium">{product.name}</span>
                   </div>
-                  <span className="font-bold text-[#0B2240]">{product.value}%</span>
+                  <span className="font-bold text-[#0B2240]">{product.value} uds.</span>
                 </div>
               ))}
             </div>
@@ -568,51 +565,7 @@ export function AdminDashboard({ onNavigate, accessToken }: { onNavigate?: (modu
         </Card>
       </div>
 
-      {/* Métricas de rendimiento */}
-      <Card className="border-0 shadow-lg">
-        <CardHeader className="border-b border-gray-100">
-          <CardTitle className="text-xl text-[#0B2240]">Indicadores de Rendimiento</CardTitle>
-          <CardDescription>
-            Métricas clave vs. objetivos establecidos
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {performanceData.map((metric, index) => (
-              <div key={index} className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium text-[#0B2240]">{metric.categoria}</span>
-                  <Badge variant={metric.actual >= metric.meta ? "default" : "secondary"} 
-                         className={metric.actual >= metric.meta ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}>
-                    {metric.actual >= metric.meta ? (
-                      <TrendingUp className="h-3 w-3 mr-1" />
-                    ) : (
-                      <TrendingDown className="h-3 w-3 mr-1" />
-                    )}
-                    {metric.actual}%
-                  </Badge>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm text-gray-600">
-                    <span>Actual</span>
-                    <span>Meta: {metric.meta}%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div 
-                      className="h-2 rounded-full transition-all duration-500"
-                      style={{ 
-                        width: `${Math.min(metric.actual, 100)}%`,
-                        backgroundColor: metric.color
-                      }}
-                    ></div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
+      {/* Indicadores no medidos se omiten hasta contar con datos reales. */}
       {/* Alertas y acciones rápidas */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Alertas del sistema */}
@@ -723,12 +676,12 @@ export function AdminDashboard({ onNavigate, accessToken }: { onNavigate?: (modu
                       <div>
                         <p className="font-medium text-[#0B2240]">{member.name}</p>
                         <p className="text-sm text-gray-600 capitalize">{member.role} • {member.shift}</p>
-                        <p className="text-xs text-gray-500">{member.tasksCompleted} tareas completadas hoy</p>
+                        <p className="text-xs text-gray-500">{member.tasksCompleted} pedidos propios pagados hoy</p>
                       </div>
                     </div>
                     <Badge className="bg-green-100 text-green-800 border-green-300">
                       <Activity className="h-3 w-3 mr-1" />
-                      Activo
+                      {member.status === "activo" ? "Activo" : "Inactivo"}
                     </Badge>
                   </div>
                 ))}
