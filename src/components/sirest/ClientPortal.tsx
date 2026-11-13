@@ -199,7 +199,7 @@ export function ClientPortal({ userData, onLogout, accessToken }: ClientPortalPr
       }
     } catch (error) {
       console.error("Error enviando pedido:", error);
-      toast.error("❌ Error al enviar el pedido. Intente nuevamente.");
+      toast.error(error instanceof Error ? error.message : "Error al enviar el pedido. Intente nuevamente.");
     } finally {
       setIsSubmitting(false);
     }
@@ -211,7 +211,7 @@ export function ClientPortal({ userData, onLogout, accessToken }: ClientPortalPr
   };
 
   const getStatusStep = (status: string) => {
-    const steps = ["pending", "preparing", "ready", "served"];
+    const steps = ["pending", "preparing", "ready", "served", "paid"];
     return steps.indexOf(status);
   };
 
